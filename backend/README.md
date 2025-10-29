@@ -145,6 +145,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 访问：
+- **API 使用手册**: [API使用手册.md](./API使用手册.md) ⭐推荐阅读
 - API 文档 (Swagger): http://localhost:8000/docs
 - 备用文档 (ReDoc): http://localhost:8000/redoc
 - 健康检查: http://localhost:8000/health

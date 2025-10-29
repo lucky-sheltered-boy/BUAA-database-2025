@@ -61,8 +61,8 @@ async def get_available_courses(
 
 @router.post("/{student_id}/enroll", response_model=ResponseModel[None])
 async def enroll_course(
-    student_id: int = Path(..., description="学生ID", gt=0),
-    request: EnrollRequest = None
+    request: EnrollRequest,
+    student_id: int = Path(..., description="学生ID", gt=0)
 ):
     """
     学生选课
@@ -109,8 +109,8 @@ async def enroll_course(
 
 @router.post("/{student_id}/drop", response_model=ResponseModel[None])
 async def drop_course(
-    student_id: int = Path(..., description="学生ID", gt=0),
-    request: DropRequest = None
+    request: DropRequest,
+    student_id: int = Path(..., description="学生ID", gt=0)
 ):
     """
     学生退课

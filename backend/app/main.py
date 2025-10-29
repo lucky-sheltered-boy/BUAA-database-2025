@@ -4,6 +4,7 @@ FastAPI 主应用
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
 from contextlib import asynccontextmanager
 
 from app.config import settings
@@ -14,6 +15,9 @@ from app.models.common import ResponseModel
 
 # 导入路由
 from app.api import auth, students, teachers, statistics
+
+# 定义安全方案（这样 Swagger UI 才会显示 Authorize 按钮）
+security = HTTPBearer()
 
 
 @asynccontextmanager
@@ -39,8 +43,62 @@ app = FastAPI(
     description="基于 FastAPI + 华为云 TaurusDB 的排课选课管理系统",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # 添加安全方案定义，使 Swagger UI 显示 Authorize 按钮
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
+    # 定义全局安全方案
+    openapi_tags=[
+        {"name": "认证", "description": "用户认证相关接口"},
+        {"name": "学生", "description": "学生选课、查询课表等功能"},
+        {"name": "教师", "description": "教师查看授课安排、学生名单等功能"},
+        {"name": "统计", "description": "数据统计和报表功能"},
+    ]
 )
+
+
+# 自定义 OpenAPI schema 以添加安全方案
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    from fastapi.openapi.utils import get_openapi
+    
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    
+    # 添加安全方案定义
+    openapi_schema["components"]["securitySchemes"] = {
+        "HTTPBearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "在此处输入 JWT token（格式：Bearer <token>）"
+        }
+    }
+    
+    # 为需要认证的路由添加安全要求
+    # 注意：登录和刷新token接口不需要认证
+    for path, path_item in openapi_schema["paths"].items():
+        # 跳过认证相关的接口
+        if "/auth/login" in path or "/auth/refresh" in path or path == "/" or path == "/health":
+            continue
+        
+        # 为其他接口添加安全要求
+        for method in path_item:
+            if method in ["get", "post", "put", "delete", "patch"]:
+                path_item[method]["security"] = [{"HTTPBearer": []}]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 # CORS 中间件
