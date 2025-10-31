@@ -1,18 +1,24 @@
 # 高校智能排课选课管理系统 - 后端服务
 
-基于 FastAPI + 华为云 TaurusDB 构建的排课选课管理系统后端服务。
+基于 FastAPI + TaurusDB 构建的排课选课管理系统后端服务。
 
-## 技术栈
+## 📚 快速导航
 
-- **框架**: FastAPI 0.109.0
-- **数据库**: 华为云 TaurusDB (MySQL 兼容)
-- **数据库驱动**: PyMySQL (支持 TLS)
+- **API 使用手册**: [API使用手册.md](API使用手册.md) - 完整的 API 接口文档
+- **技术实现说明**: [后端实现说明.md](后端实现说明.md) - 详细的技术实现细节
+- **在线 API 文档**: 启动服务后访问 http://localhost:8000/docs
+
+## 🚀 技术栈
+
+- **框架**: FastAPI 0.115.0
+- **数据库**: MySQL 8.0 / 华为云 TaurusDB
+- **数据库驱动**: PyMySQL + DBUtils
 - **认证**: JWT (python-jose)
 - **密码加密**: bcrypt (passlib)
 - **日志**: loguru
 - **测试**: pytest
 
-## 项目结构
+## 📁 项目结构
 
 ```
 backend/

@@ -15,7 +15,9 @@ class DatabasePool:
     
     def __init__(self):
         self._pool = None
-        self._init_pool()
+        self._init_attempted = False
+        # 不在初始化时立即连接，而是延迟到第一次使用
+        # self._init_pool()
     
     def _init_pool(self):
         """初始化连接池"""
@@ -39,7 +41,7 @@ class DatabasePool:
                 blocking=True,  # 连接不够时阻塞等待
                 maxusage=None,  # 连接最大使用次数，None 表示无限制
                 setsession=[],
-                ping=1,  # 检查连接有效性：0=None, 1=default, 2=when checked out, 4=when checked in, 7=always
+                ping=7,  # 检查连接有效性：7=always (最强保活机制)
                 host=settings.DB_HOST,
                 port=settings.DB_PORT,
                 user=settings.DB_USER,
@@ -48,7 +50,11 @@ class DatabasePool:
                 charset=settings.DB_CHARSET,
                 ssl=ssl_config,
                 cursorclass=pymysql.cursors.DictCursor,  # 返回字典格式
-                autocommit=False  # 手动控制事务
+                autocommit=False,  # 手动控制事务
+                # 新增超时和重连配置
+                connect_timeout=settings.DB_CONNECT_TIMEOUT,  # 连接超时
+                read_timeout=settings.DB_READ_TIMEOUT,        # 读取超时
+                write_timeout=settings.DB_WRITE_TIMEOUT,      # 写入超时
             )
             
             logger.info(f"数据库连接池初始化成功: {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}")
@@ -57,11 +63,46 @@ class DatabasePool:
             logger.error(f"数据库连接池初始化失败: {str(e)}")
             raise
     
+    def _ensure_pool(self):
+        """确保连接池已初始化"""
+        if self._pool is None and not self._init_attempted:
+            self._init_attempted = True
+            self._init_pool()
+    
     def get_connection(self):
-        """获取数据库连接"""
+        """获取数据库连接（带重试机制）"""
+        self._ensure_pool()
         if not self._pool:
             self._init_pool()
-        return self._pool.connection()
+        
+        # 添加重试机制
+        max_retries = 3
+        retry_count = 0
+        last_error = None
+        
+        while retry_count < max_retries:
+            try:
+                conn = self._pool.connection()
+                # 测试连接是否有效
+                conn.ping(reconnect=True)
+                return conn
+            except Exception as e:
+                retry_count += 1
+                last_error = e
+                logger.warning(f"获取数据库连接失败 (尝试 {retry_count}/{max_retries}): {str(e)}")
+                
+                # 如果不是最后一次重试，重置连接池
+                if retry_count < max_retries:
+                    try:
+                        self._pool = None
+                        self._init_attempted = False
+                        self._ensure_pool()
+                    except Exception as init_error:
+                        logger.error(f"重新初始化连接池失败: {str(init_error)}")
+        
+        # 所有重试都失败
+        logger.error(f"获取数据库连接失败，已重试 {max_retries} 次")
+        raise last_error
     
     @contextmanager
     def get_cursor(self, commit: bool = False) -> Generator:

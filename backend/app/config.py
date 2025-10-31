@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     DB_POOL_MAX_SIZE: int = 20
     DB_POOL_MAX_IDLE: int = 300  # 秒
     
+    # 连接超时配置（秒）
+    DB_CONNECT_TIMEOUT: int = 30  # 连接超时
+    DB_READ_TIMEOUT: int = 30     # 读取超时
+    DB_WRITE_TIMEOUT: int = 30    # 写入超时
+    
     # TLS/SSL 配置
     DB_USE_SSL: bool = False
     DB_SSL_CA_PATH: str = ""
