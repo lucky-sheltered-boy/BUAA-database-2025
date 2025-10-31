@@ -35,10 +35,22 @@ BEGIN
     JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
     WHERE oi.`开课实例ID` = NEW.`开课实例ID`;
     
+    -- 验证开课实例是否存在
+    IF v_院系ID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '选课失败: 开课实例不存在或课程信息不完整';
+    END IF;
+    
     -- 获取学生院系
     SELECT `院系ID` INTO v_学生院系ID
     FROM `用户信息表`
     WHERE `用户ID` = NEW.`学生ID` AND `角色` = '学生';
+    
+    -- 验证学生是否存在
+    IF v_学生院系ID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '选课失败: 学生信息不存在或用户不是学生';
+    END IF;
     
     -- 判断是否本院系学生
     SET v_是否本院系 = (v_学生院系ID = v_院系ID);
@@ -69,22 +81,22 @@ BEGIN
         END IF;
     END IF;
     
-    -- 3. 检查是否重复选课
+    -- 3. 检查重复选课 (必须在时间冲突检查之前)
     IF EXISTS (
         SELECT 1 FROM `选课记录表`
-        WHERE `学生ID` = NEW.`学生ID` 
-          AND `开课实例ID` = NEW.`开课实例ID`
+        WHERE `学生ID` = NEW.`学生ID` AND `开课实例ID` = NEW.`开课实例ID`
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = '选课失败: 已选过该课程';
+        SET MESSAGE_TEXT = '选课失败: 已选修该课程，不能重复选课';
     END IF;
     
-    -- 4. 检查时间冲突(考虑周次)
+    -- 4. 检查时间冲突(考虑周次，排除同一门课)
     SELECT COUNT(*) INTO v_冲突数
     FROM `选课记录表` sc
     JOIN `上课时间表` t1 ON sc.`开课实例ID` = t1.`开课实例ID`
     JOIN `上课时间表` t2 ON t2.`开课实例ID` = NEW.`开课实例ID`
     WHERE sc.`学生ID` = NEW.`学生ID`
+      AND sc.`开课实例ID` != NEW.`开课实例ID`  -- 排除同一门课
       AND t1.`时间段ID` = t2.`时间段ID`
       -- 周次范围重叠检查
       AND t1.`起始周` <= t2.`结束周`
@@ -226,6 +238,12 @@ BEGIN
     FROM `开课实例表`
     WHERE `开课实例ID` = NEW.`开课实例ID`;
     
+    -- 验证开课实例是否存在
+    IF v_教室ID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '排课失败: 开课实例不存在';
+    END IF;
+    
     -- 检查教室时间冲突(同一时间段+同一教室+周次重叠+单双周冲突)
     SELECT COUNT(*) INTO v_冲突数
     FROM `上课时间表` t
@@ -300,6 +318,12 @@ BEGIN
     FROM `开课实例表`
     WHERE `开课实例ID` = NEW.`开课实例ID`;
     
+    -- 验证开课实例是否存在
+    IF v_教室ID IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '排课更新失败: 开课实例不存在';
+    END IF;
+    
     -- 检查教室时间冲突(排除自己)
     SELECT COUNT(*) INTO v_冲突数
     FROM `上课时间表` t
@@ -373,6 +397,12 @@ BEGIN
     FROM `教室信息表`
     WHERE `教室ID` = NEW.`教室ID`;
     
+    -- 验证教室是否存在
+    IF v_教室容量 IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '开课失败: 教室不存在';
+    END IF;
+    
     -- 计算总名额
     SET v_总名额 = NEW.`对内名额` + NEW.`对外名额`;
     
@@ -398,6 +428,12 @@ BEGIN
     SELECT `容量` INTO v_教室容量
     FROM `教室信息表`
     WHERE `教室ID` = NEW.`教室ID`;
+    
+    -- 验证教室是否存在
+    IF v_教室容量 IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '更新失败: 教室不存在';
+    END IF;
     
     -- 计算总名额
     SET v_总名额 = NEW.`对内名额` + NEW.`对外名额`;

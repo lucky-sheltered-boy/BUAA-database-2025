@@ -71,24 +71,24 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 
 -- 检查剩余的表
-SELECT COUNT(*) AS '剩余表数量' 
-FROM information_schema.TABLES 
-WHERE TABLE_SCHEMA = DATABASE() 
+SELECT COUNT(*) AS '剩余表数量'
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_TYPE = 'BASE TABLE';
 
 -- 检查剩余的视图
-SELECT COUNT(*) AS '剩余视图数量' 
-FROM information_schema.TABLES 
-WHERE TABLE_SCHEMA = DATABASE() 
+SELECT COUNT(*) AS '剩余视图数量'
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_TYPE = 'VIEW';
 
 -- 检查剩余的触发器
-SELECT COUNT(*) AS '剩余触发器数量' 
-FROM information_schema.TRIGGERS 
+SELECT COUNT(*) AS '剩余触发器数量'
+FROM information_schema.TRIGGERS
 WHERE TRIGGER_SCHEMA = DATABASE();
 
 -- 检查剩余的存储过程
-SELECT COUNT(*) AS '剩余存储过程数量' 
-FROM information_schema.ROUTINES 
-WHERE ROUTINE_SCHEMA = DATABASE() 
+SELECT COUNT(*) AS '剩余存储过程数量'
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = DATABASE()
   AND ROUTINE_TYPE = 'PROCEDURE';

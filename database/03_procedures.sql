@@ -15,22 +15,27 @@ CREATE PROCEDURE `sp_add_department`(
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK;
-        SET p_message = '添加院系失败: 数据库错误';
+        SET p_message = '❌ 添加院系失败: 数据库错误';
         SET p_院系ID = -1;
+        ROLLBACK;
     END;
     
     START TRANSACTION;
     
+    -- 参数验证
+    IF p_院系名称 IS NULL OR TRIM(p_院系名称) = '' THEN
+        SET p_message = '❌ 添加失败: 院系名称不能为空';
+        SET p_院系ID = -1;
+        ROLLBACK;
     -- 检查院系名称是否已存在
-    IF EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系名称` = p_院系名称) THEN
-        SET p_message = '添加失败: 院系名称已存在';
+    ELSEIF EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系名称` = p_院系名称) THEN
+        SET p_message = CONCAT('❌ 添加失败: 院系"', p_院系名称, '"已存在');
         SET p_院系ID = -1;
         ROLLBACK;
     ELSE
         INSERT INTO `院系信息表` (`院系名称`) VALUES (p_院系名称);
         SET p_院系ID = LAST_INSERT_ID();
-        SET p_message = CONCAT('成功添加院系: ', p_院系名称);
+        SET p_message = CONCAT('✅ 成功添加院系: ', p_院系名称, ' (ID: ', p_院系ID, ')');
         COMMIT;
     END IF;
 END$$
@@ -49,16 +54,29 @@ CREATE PROCEDURE `sp_add_classroom`(
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK;
-        SET p_message = '添加教室失败: 数据库错误';
+        SET p_message = '❌ 添加教室失败: 数据库错误';
         SET p_教室ID = -1;
+        ROLLBACK;
     END;
     
     START TRANSACTION;
     
+    -- 参数验证
+    IF p_教学楼 IS NULL OR TRIM(p_教学楼) = '' THEN
+        SET p_message = '❌ 添加失败: 教学楼名称不能为空';
+        SET p_教室ID = -1;
+        ROLLBACK;
+    ELSEIF p_房间号 IS NULL OR TRIM(p_房间号) = '' THEN
+        SET p_message = '❌ 添加失败: 房间号不能为空';
+        SET p_教室ID = -1;
+        ROLLBACK;
     -- 检查容量是否合法
-    IF p_容量 <= 0 THEN
-        SET p_message = '添加失败: 教室容量必须大于0';
+    ELSEIF p_容量 IS NULL OR p_容量 <= 0 THEN
+        SET p_message = CONCAT('❌ 添加失败: 教室容量必须大于0 (当前值: ', COALESCE(p_容量, 'NULL'), ')');
+        SET p_教室ID = -1;
+        ROLLBACK;
+    ELSEIF p_容量 > 1000 THEN
+        SET p_message = CONCAT('❌ 添加失败: 教室容量不能超过1000 (当前值: ', p_容量, ')');
         SET p_教室ID = -1;
         ROLLBACK;
     -- 检查教室是否已存在
@@ -66,14 +84,14 @@ BEGIN
         SELECT 1 FROM `教室信息表` 
         WHERE `教学楼` = p_教学楼 AND `房间号` = p_房间号
     ) THEN
-        SET p_message = '添加失败: 该教室已存在';
+        SET p_message = CONCAT('❌ 添加失败: 教室"', p_教学楼, ' ', p_房间号, '"已存在');
         SET p_教室ID = -1;
         ROLLBACK;
     ELSE
         INSERT INTO `教室信息表` (`教学楼`, `房间号`, `容量`) 
         VALUES (p_教学楼, p_房间号, p_容量);
         SET p_教室ID = LAST_INSERT_ID();
-        SET p_message = CONCAT('成功添加教室: ', p_教学楼, ' ', p_房间号);
+        SET p_message = CONCAT('✅ 成功添加教室: ', p_教学楼, ' ', p_房间号, ' (容量: ', p_容量, '人, ID: ', p_教室ID, ')');
         COMMIT;
     END IF;
 END$$
@@ -90,30 +108,45 @@ CREATE PROCEDURE `sp_add_course`(
     OUT p_message VARCHAR(255)
 )
 BEGIN
+    DECLARE v_院系名称 VARCHAR(100);
+    
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
+        SET p_message = '❌ 添加课程失败: 数据库错误';
         ROLLBACK;
-        SET p_message = '添加课程失败: 数据库错误';
     END;
     
     START TRANSACTION;
     
+    -- 参数验证
+    IF p_课程ID IS NULL OR TRIM(p_课程ID) = '' THEN
+        SET p_message = '❌ 添加失败: 课程ID不能为空';
+        ROLLBACK;
+    ELSEIF p_课程名称 IS NULL OR TRIM(p_课程名称) = '' THEN
+        SET p_message = '❌ 添加失败: 课程名称不能为空';
+        ROLLBACK;
     -- 检查学分是否合法
-    IF p_学分 <= 0 THEN
-        SET p_message = '添加失败: 学分必须大于0';
+    ELSEIF p_学分 IS NULL OR p_学分 <= 0 THEN
+        SET p_message = CONCAT('❌ 添加失败: 学分必须大于0 (当前值: ', COALESCE(p_学分, 'NULL'), ')');
+        ROLLBACK;
+    ELSEIF p_学分 > 10 THEN
+        SET p_message = CONCAT('❌ 添加失败: 学分不能超过10 (当前值: ', p_学分, ')');
         ROLLBACK;
     -- 检查院系是否存在
     ELSEIF NOT EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系ID` = p_院系ID) THEN
-        SET p_message = '添加失败: 院系不存在';
+        SET p_message = CONCAT('❌ 添加失败: 院系ID ', p_院系ID, ' 不存在');
         ROLLBACK;
     -- 检查课程ID是否已存在
     ELSEIF EXISTS (SELECT 1 FROM `课程信息表` WHERE `课程ID` = p_课程ID) THEN
-        SET p_message = '添加失败: 课程ID已存在';
+        SET p_message = CONCAT('❌ 添加失败: 课程ID "', p_课程ID, '" 已存在');
         ROLLBACK;
     ELSE
+        -- 获取院系名称用于成功消息
+        SELECT `院系名称` INTO v_院系名称 FROM `院系信息表` WHERE `院系ID` = p_院系ID;
+        
         INSERT INTO `课程信息表` (`课程ID`, `课程名称`, `学分`, `院系ID`) 
         VALUES (p_课程ID, p_课程名称, p_学分, p_院系ID);
-        SET p_message = CONCAT('成功添加课程: ', p_课程名称, ' (', p_课程ID, ')');
+        SET p_message = CONCAT('✅ 成功添加课程: ', p_课程名称, ' (', p_课程ID, ', ', p_学分, '学分, 所属: ', v_院系名称, ')');
         COMMIT;
     END IF;
 END$$
@@ -133,27 +166,48 @@ CREATE PROCEDURE `sp_add_user`(
 )
 BEGIN
     DECLARE v_密码哈希 VARCHAR(255);
+    DECLARE v_院系名称 VARCHAR(100);
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK;
-        SET p_message = '添加用户失败: 数据库错误';
+        SET p_message = '❌ 添加用户失败: 数据库错误';
         SET p_用户ID = -1;
+        ROLLBACK;
     END;
     
     START TRANSACTION;
     
+    -- 参数验证
+    IF p_学号_工号 IS NULL OR TRIM(p_学号_工号) = '' THEN
+        SET p_message = '❌ 添加失败: 学号/工号不能为空';
+        SET p_用户ID = -1;
+        ROLLBACK;
+    ELSEIF p_姓名 IS NULL OR TRIM(p_姓名) = '' THEN
+        SET p_message = '❌ 添加失败: 姓名不能为空';
+        SET p_用户ID = -1;
+        ROLLBACK;
+    ELSEIF p_密码 IS NULL OR TRIM(p_密码) = '' THEN
+        SET p_message = '❌ 添加失败: 密码不能为空';
+        SET p_用户ID = -1;
+        ROLLBACK;
+    ELSEIF LENGTH(p_密码) < 6 THEN
+        SET p_message = CONCAT('❌ 添加失败: 密码长度不能少于6位 (当前: ', LENGTH(p_密码), '位)');
+        SET p_用户ID = -1;
+        ROLLBACK;
     -- 检查院系是否存在
-    IF NOT EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系ID` = p_院系ID) THEN
-        SET p_message = '添加失败: 院系不存在';
+    ELSEIF NOT EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系ID` = p_院系ID) THEN
+        SET p_message = CONCAT('❌ 添加失败: 院系ID ', p_院系ID, ' 不存在');
         SET p_用户ID = -1;
         ROLLBACK;
     -- 检查学号/工号是否已存在
     ELSEIF EXISTS (SELECT 1 FROM `用户信息表` WHERE `学号_工号` = p_学号_工号) THEN
-        SET p_message = '添加失败: 学号/工号已存在';
+        SET p_message = CONCAT('❌ 添加失败: 学号/工号 "', p_学号_工号, '" 已被使用');
         SET p_用户ID = -1;
         ROLLBACK;
     ELSE
+        -- 获取院系名称
+        SELECT `院系名称` INTO v_院系名称 FROM `院系信息表` WHERE `院系ID` = p_院系ID;
+        
         -- 简单的密码哈希(实际应用中应使用更安全的方法)
         SET v_密码哈希 = CONCAT('hash_', MD5(p_密码));
         
@@ -161,7 +215,7 @@ BEGIN
         VALUES (p_学号_工号, p_姓名, v_密码哈希, p_角色, p_院系ID);
         
         SET p_用户ID = LAST_INSERT_ID();
-        SET p_message = CONCAT('成功添加', p_角色, ': ', p_姓名, ' (', p_学号_工号, ')');
+        SET p_message = CONCAT('✅ 成功添加', p_角色, ': ', p_姓名, ' (', p_学号_工号, ', 所属: ', v_院系名称, ', ID: ', p_用户ID, ')');
         COMMIT;
     END IF;
 END$$
@@ -184,38 +238,64 @@ CREATE PROCEDURE `sp_create_course_instance`(
 BEGIN
     DECLARE v_教室容量 INT;
     DECLARE v_总名额 INT;
+    DECLARE v_课程名称 VARCHAR(100);
+    DECLARE v_教室位置 VARCHAR(100);
+    DECLARE v_学期名称 VARCHAR(50);
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK;
-        SET p_message = '创建开课实例失败: 数据库错误';
+        SET p_message = '❌ 创建开课实例失败: 数据库错误';
         SET p_开课实例ID = -1;
+        ROLLBACK;
     END;
     
     START TRANSACTION;
     
+    -- 参数验证
+    IF p_课程ID IS NULL OR TRIM(p_课程ID) = '' THEN
+        SET p_message = '❌ 创建失败: 课程ID不能为空';
+        SET p_开课实例ID = -1;
+        ROLLBACK;
+    ELSEIF p_对内名额 IS NULL OR p_对内名额 < 0 THEN
+        SET p_message = CONCAT('❌ 创建失败: 对内名额不能为负数 (当前: ', COALESCE(p_对内名额, 'NULL'), ')');
+        SET p_开课实例ID = -1;
+        ROLLBACK;
+    ELSEIF p_对外名额 IS NULL OR p_对外名额 < 0 THEN
+        SET p_message = CONCAT('❌ 创建失败: 对外名额不能为负数 (当前: ', COALESCE(p_对外名额, 'NULL'), ')');
+        SET p_开课实例ID = -1;
+        ROLLBACK;
+    ELSEIF p_对内名额 + p_对外名额 = 0 THEN
+        SET p_message = '❌ 创建失败: 对内名额和对外名额不能同时为0';
+        SET p_开课实例ID = -1;
+        ROLLBACK;
     -- 检查课程是否存在
-    IF NOT EXISTS (SELECT 1 FROM `课程信息表` WHERE `课程ID` = p_课程ID) THEN
-        SET p_message = '创建失败: 课程不存在';
+    ELSEIF NOT EXISTS (SELECT 1 FROM `课程信息表` WHERE `课程ID` = p_课程ID) THEN
+        SET p_message = CONCAT('❌ 创建失败: 课程ID "', p_课程ID, '" 不存在');
         SET p_开课实例ID = -1;
         ROLLBACK;
     -- 检查教室是否存在
     ELSEIF NOT EXISTS (SELECT 1 FROM `教室信息表` WHERE `教室ID` = p_教室ID) THEN
-        SET p_message = '创建失败: 教室不存在';
+        SET p_message = CONCAT('❌ 创建失败: 教室ID ', p_教室ID, ' 不存在');
         SET p_开课实例ID = -1;
         ROLLBACK;
     -- 检查学期是否存在
     ELSEIF NOT EXISTS (SELECT 1 FROM `学期信息表` WHERE `学期ID` = p_学期ID) THEN
-        SET p_message = '创建失败: 学期不存在';
+        SET p_message = CONCAT('❌ 创建失败: 学期ID ', p_学期ID, ' 不存在');
         SET p_开课实例ID = -1;
         ROLLBACK;
     ELSE
-        -- 获取教室容量并检查(触发器会再次检查,这里提前检查提供更好的错误信息)
-        SELECT `容量` INTO v_教室容量 FROM `教室信息表` WHERE `教室ID` = p_教室ID;
+        -- 获取详细信息
+        SELECT `课程名称` INTO v_课程名称 FROM `课程信息表` WHERE `课程ID` = p_课程ID;
+        SELECT CONCAT(`教学楼`, ' ', `房间号`), `容量` 
+        INTO v_教室位置, v_教室容量 
+        FROM `教室信息表` WHERE `教室ID` = p_教室ID;
+        SELECT CONCAT(`学年`, ' ', `学期类型`) INTO v_学期名称 FROM `学期信息表` WHERE `学期ID` = p_学期ID;
+        
         SET v_总名额 = p_对内名额 + p_对外名额;
         
+        -- 检查教室容量
         IF v_总名额 > v_教室容量 THEN
-            SET p_message = CONCAT('创建失败: 总名额(', v_总名额, ')超过教室容量(', v_教室容量, ')');
+            SET p_message = CONCAT('❌ 创建失败: 总名额(', v_总名额, '人)超过教室"', v_教室位置, '"容量(', v_教室容量, '人)');
             SET p_开课实例ID = -1;
             ROLLBACK;
         ELSE
@@ -225,7 +305,8 @@ BEGIN
                 (p_课程ID, p_教室ID, p_学期ID, p_对内名额, p_对外名额);
             
             SET p_开课实例ID = LAST_INSERT_ID();
-            SET p_message = CONCAT('成功创建开课实例,ID: ', p_开课实例ID);
+            SET p_message = CONCAT('✅ 成功创建开课实例: ', v_课程名称, ' (', v_学期名称, ', 教室: ', v_教室位置, 
+                                   ', 对内名额: ', p_对内名额, ', 对外名额: ', p_对外名额, ', 实例ID: ', p_开课实例ID, ')');
             COMMIT;
         END IF;
     END IF;
@@ -242,41 +323,49 @@ CREATE PROCEDURE `sp_assign_teacher`(
 )
 BEGIN
     DECLARE v_角色 ENUM('学生','教师','教务');
+    DECLARE v_教师姓名 VARCHAR(50);
+    DECLARE v_课程名称 VARCHAR(100);
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
+        SET p_message = '❌ 分配教师失败: 数据库错误';
         ROLLBACK;
-        SET p_message = '分配教师失败: 数据库错误';
     END;
     
     START TRANSACTION;
     
     -- 检查用户是否存在且为教师
-    SELECT `角色` INTO v_角色 
+    SELECT `角色`, `姓名` INTO v_角色, v_教师姓名
     FROM `用户信息表` 
     WHERE `用户ID` = p_教师ID;
     
     IF v_角色 IS NULL THEN
-        SET p_message = '分配失败: 教师不存在';
+        SET p_message = CONCAT('❌ 分配失败: 用户ID ', p_教师ID, ' 不存在');
         ROLLBACK;
     ELSEIF v_角色 != '教师' THEN
-        SET p_message = '分配失败: 该用户不是教师';
+        SET p_message = CONCAT('❌ 分配失败: 用户"', v_教师姓名, '"的角色是"', v_角色, '"，不是教师');
         ROLLBACK;
     -- 检查开课实例是否存在
     ELSEIF NOT EXISTS (SELECT 1 FROM `开课实例表` WHERE `开课实例ID` = p_开课实例ID) THEN
-        SET p_message = '分配失败: 开课实例不存在';
+        SET p_message = CONCAT('❌ 分配失败: 开课实例ID ', p_开课实例ID, ' 不存在');
         ROLLBACK;
     -- 检查是否已经分配过
     ELSEIF EXISTS (
         SELECT 1 FROM `授课关系表` 
         WHERE `教师ID` = p_教师ID AND `开课实例ID` = p_开课实例ID
     ) THEN
-        SET p_message = '分配失败: 该教师已分配给此课程';
+        SET p_message = CONCAT('❌ 分配失败: 教师"', v_教师姓名, '"已分配给该课程');
         ROLLBACK;
     ELSE
+        -- 获取课程信息
+        SELECT c.`课程名称` INTO v_课程名称
+        FROM `开课实例表` oi
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        WHERE oi.`开课实例ID` = p_开课实例ID;
+        
         INSERT INTO `授课关系表` (`教师ID`, `开课实例ID`) 
         VALUES (p_教师ID, p_开课实例ID);
-        SET p_message = '成功分配教师';
+        SET p_message = CONCAT('✅ 成功分配: 教师"', v_教师姓名, '"授课"', v_课程名称, '"');
         COMMIT;
     END IF;
 END$$
@@ -296,26 +385,75 @@ CREATE PROCEDURE `sp_add_schedule_time`(
     OUT p_message VARCHAR(255)
 )
 BEGIN
+    DECLARE v_课程名称 VARCHAR(100);
+    DECLARE v_时间描述 VARCHAR(100);
+    DECLARE v_教师姓名 VARCHAR(50);
+    
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        ROLLBACK;
-        GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errno = MYSQL_ERRNO, @text = MESSAGE_TEXT;
-        SET p_message = CONCAT('添加上课时间失败: ', @text);
+        SET p_message = '❌ 添加上课时间失败: 数据库错误';
         SET p_上课时间ID = -1;
+        ROLLBACK;
     END;
     
     START TRANSACTION;
     
-    -- 检查周次范围
-    IF p_起始周 < 1 OR p_起始周 > 20 OR p_结束周 < 1 OR p_结束周 > 20 THEN
-        SET p_message = '添加失败: 周次范围必须在1-20之间';
+    -- 参数验证
+    IF p_起始周 IS NULL OR p_结束周 IS NULL THEN
+        SET p_message = '❌ 添加失败: 起始周和结束周不能为空';
+        SET p_上课时间ID = -1;
+        ROLLBACK;
+    ELSEIF p_起始周 < 1 OR p_起始周 > 20 THEN
+        SET p_message = CONCAT('❌ 添加失败: 起始周必须在1-20之间 (当前: ', p_起始周, ')');
+        SET p_上课时间ID = -1;
+        ROLLBACK;
+    ELSEIF p_结束周 < 1 OR p_结束周 > 20 THEN
+        SET p_message = CONCAT('❌ 添加失败: 结束周必须在1-20之间 (当前: ', p_结束周, ')');
         SET p_上课时间ID = -1;
         ROLLBACK;
     ELSEIF p_结束周 < p_起始周 THEN
-        SET p_message = '添加失败: 结束周不能小于起始周';
+        SET p_message = CONCAT('❌ 添加失败: 起始周(', p_起始周, ')不能大于结束周(', p_结束周, ')');
+        SET p_上课时间ID = -1;
+        ROLLBACK;
+    -- 检查开课实例是否存在
+    ELSEIF NOT EXISTS (SELECT 1 FROM `开课实例表` WHERE `开课实例ID` = p_开课实例ID) THEN
+        SET p_message = CONCAT('❌ 添加失败: 开课实例ID ', p_开课实例ID, ' 不存在');
+        SET p_上课时间ID = -1;
+        ROLLBACK;
+    -- 检查时间段是否存在
+    ELSEIF NOT EXISTS (SELECT 1 FROM `时间段信息表` WHERE `时间段ID` = p_时间段ID) THEN
+        SET p_message = CONCAT('❌ 添加失败: 时间段ID ', p_时间段ID, ' 不存在');
+        SET p_上课时间ID = -1;
+        ROLLBACK;
+    -- 检查教师是否存在(如果提供了教师ID)
+    ELSEIF p_教师ID IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM `用户信息表` 
+        WHERE `用户ID` = p_教师ID AND `角色` = '教师'
+    ) THEN
+        SET p_message = CONCAT('❌ 添加失败: 教师ID ', p_教师ID, ' 不存在或不是教师');
         SET p_上课时间ID = -1;
         ROLLBACK;
     ELSE
+        -- 获取详细信息用于成功消息
+        SELECT c.`课程名称` INTO v_课程名称
+        FROM `开课实例表` oi
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        WHERE oi.`开课实例ID` = p_开课实例ID;
+        
+        SELECT CONCAT('周', 
+                     CASE `星期` 
+                         WHEN 1 THEN '一' WHEN 2 THEN '二' WHEN 3 THEN '三' 
+                         WHEN 4 THEN '四' WHEN 5 THEN '五' WHEN 6 THEN '六' WHEN 7 THEN '日'
+                     END,
+                     ' ', `开始时间`, '-', `结束时间`)
+        INTO v_时间描述
+        FROM `时间段信息表`
+        WHERE `时间段ID` = p_时间段ID;
+        
+        IF p_教师ID IS NOT NULL THEN
+            SELECT `姓名` INTO v_教师姓名 FROM `用户信息表` WHERE `用户ID` = p_教师ID;
+        END IF;
+        
         -- 触发器会自动检查教师和教室冲突
         INSERT INTO `上课时间表` 
             (`开课实例ID`, `时间段ID`, `教师ID`, `起始周`, `结束周`, `单双周`) 
@@ -323,7 +461,9 @@ BEGIN
             (p_开课实例ID, p_时间段ID, p_教师ID, p_起始周, p_结束周, p_单双周);
         
         SET p_上课时间ID = LAST_INSERT_ID();
-        SET p_message = CONCAT('成功添加上课时间,ID: ', p_上课时间ID);
+        SET p_message = CONCAT('✅ 成功添加上课时间: ', v_课程名称, ', ', v_时间描述, 
+                              ', 第', p_起始周, '-', p_结束周, '周(', p_单双周, ')',
+                              IF(p_教师ID IS NOT NULL, CONCAT(', 教师: ', v_教师姓名), ''));
         COMMIT;
     END IF;
 END$$
@@ -341,37 +481,42 @@ CREATE PROCEDURE `sp_student_enroll`(
 )
 BEGIN
     DECLARE v_角色 ENUM('学生','教师','教务');
+    DECLARE v_学生姓名 VARCHAR(50);
+    DECLARE v_课程名称 VARCHAR(100);
     
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errno = MYSQL_ERRNO, @text = MESSAGE_TEXT;
-        SET p_message = @text;
-    END;
+    -- 移除 EXIT HANDLER，让触发器的具体错误直接返回
+    -- 触发器会返回：名额已满、时间冲突、不在选课窗口等具体信息
     
     START TRANSACTION;
     
     -- 检查用户是否存在且为学生
-    SELECT `角色` INTO v_角色 
+    SELECT `角色`, `姓名` INTO v_角色, v_学生姓名
     FROM `用户信息表` 
     WHERE `用户ID` = p_学生ID;
     
     IF v_角色 IS NULL THEN
-        SET p_message = '选课失败: 学生不存在';
+        SET p_message = CONCAT('❌ 选课失败: 学生ID ', p_学生ID, ' 不存在');
         ROLLBACK;
     ELSEIF v_角色 != '学生' THEN
-        SET p_message = '选课失败: 该用户不是学生';
+        SET p_message = CONCAT('❌ 选课失败: 用户"', v_学生姓名, '"的角色是"', v_角色, '"，不是学生');
         ROLLBACK;
     -- 检查开课实例是否存在
     ELSEIF NOT EXISTS (SELECT 1 FROM `开课实例表` WHERE `开课实例ID` = p_开课实例ID) THEN
-        SET p_message = '选课失败: 开课实例不存在';
+        SET p_message = CONCAT('❌ 选课失败: 开课实例ID ', p_开课实例ID, ' 不存在');
         ROLLBACK;
     ELSE
-        -- 触发器会自动检查名额、时间冲突、重复选课等
+        -- 获取课程名称
+        SELECT c.`课程名称` INTO v_课程名称
+        FROM `开课实例表` oi
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        WHERE oi.`开课实例ID` = p_开课实例ID;
+        
+        -- 触发器会自动检查名额、时间冲突、重复选课、选课时间窗口等
+        -- 如果失败，触发器会抛出 SQLSTATE '45000' 并返回具体错误信息
         INSERT INTO `选课记录表` (`学生ID`, `开课实例ID`, `选课时间`) 
         VALUES (p_学生ID, p_开课实例ID, NOW());
         
-        SET p_message = '选课成功';
+        SET p_message = CONCAT('✅ 选课成功: ', v_学生姓名, ' 已成功选修《', v_课程名称, '》');
         COMMIT;
     END IF;
 END$$
@@ -386,11 +531,10 @@ CREATE PROCEDURE `sp_student_drop`(
     OUT p_message VARCHAR(255)
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SET p_message = '退课失败: 数据库错误';
-    END;
+    DECLARE v_学生姓名 VARCHAR(50);
+    DECLARE v_课程名称 VARCHAR(100);
+    
+    -- 移除 EXIT HANDLER，让具体错误直接返回
     
     START TRANSACTION;
     
@@ -399,14 +543,36 @@ BEGIN
         SELECT 1 FROM `选课记录表` 
         WHERE `学生ID` = p_学生ID AND `开课实例ID` = p_开课实例ID
     ) THEN
-        SET p_message = '退课失败: 未选该课程';
+        -- 获取学生和课程信息用于错误提示
+        SELECT `姓名` INTO v_学生姓名 FROM `用户信息表` WHERE `用户ID` = p_学生ID;
+        SELECT c.`课程名称` INTO v_课程名称
+        FROM `开课实例表` oi
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        WHERE oi.`开课实例ID` = p_开课实例ID;
+        
+        IF v_学生姓名 IS NULL THEN
+            SET p_message = CONCAT('❌ 退课失败: 学生ID ', p_学生ID, ' 不存在');
+        ELSEIF v_课程名称 IS NULL THEN
+            SET p_message = CONCAT('❌ 退课失败: 开课实例ID ', p_开课实例ID, ' 不存在');
+        ELSE
+            SET p_message = CONCAT('❌ 退课失败: ', v_学生姓名, ' 未选修《', v_课程名称, '》');
+        END IF;
         ROLLBACK;
     ELSE
+        -- 获取信息用于成功提示
+        SELECT u.`姓名`, c.`课程名称`
+        INTO v_学生姓名, v_课程名称
+        FROM `选课记录表` sc
+        JOIN `用户信息表` u ON sc.`学生ID` = u.`用户ID`
+        JOIN `开课实例表` oi ON sc.`开课实例ID` = oi.`开课实例ID`
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        WHERE sc.`学生ID` = p_学生ID AND sc.`开课实例ID` = p_开课实例ID;
+        
         -- 删除选课记录,触发器会自动更新已选人数
         DELETE FROM `选课记录表` 
         WHERE `学生ID` = p_学生ID AND `开课实例ID` = p_开课实例ID;
         
-        SET p_message = '退课成功';
+        SET p_message = CONCAT('✅ 退课成功: ', v_学生姓名, ' 已退选《', v_课程名称, '》');
         COMMIT;
     END IF;
 END$$
@@ -492,46 +658,82 @@ CREATE PROCEDURE `sp_get_available_courses`(
 )
 BEGIN
     DECLARE v_学生院系ID INT;
+    DECLARE v_学生姓名 VARCHAR(50);
     
-    -- 获取学生院系
-    SELECT `院系ID` INTO v_学生院系ID 
+    -- 获取学生信息
+    SELECT `院系ID`, `姓名` INTO v_学生院系ID, v_学生姓名
     FROM `用户信息表` 
-    WHERE `用户ID` = p_学生ID;
+    WHERE `用户ID` = p_学生ID AND `角色` = '学生';
     
-    SELECT 
-        oi.`开课实例ID`,
-        c.`课程ID`,
-        c.`课程名称`,
-        c.`学分`,
-        d.`院系名称` AS `开课院系`,
-        r.`教学楼`,
-        r.`房间号`,
-        CASE 
-            WHEN c.`院系ID` = v_学生院系ID THEN oi.`对内名额` - oi.`已选对内人数`
-            ELSE oi.`对外名额` - oi.`已选对外人数`
-        END AS `剩余名额`,
-        CASE 
-            WHEN c.`院系ID` = v_学生院系ID THEN '本院系'
-            ELSE '跨院系'
-        END AS `选课类型`
-    FROM `开课实例表` oi
-    JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
-    JOIN `院系信息表` d ON c.`院系ID` = d.`院系ID`
-    JOIN `教室信息表` r ON oi.`教室ID` = r.`教室ID`
-    JOIN `学期信息表` s ON oi.`学期ID` = s.`学期ID`
-    WHERE s.`是否当前学期` = TRUE
-      -- 有剩余名额
-      AND (
-          (c.`院系ID` = v_学生院系ID AND oi.`已选对内人数` < oi.`对内名额`)
-          OR
-          (c.`院系ID` != v_学生院系ID AND oi.`已选对外人数` < oi.`对外名额`)
-      )
-      -- 未选过该课程
-      AND NOT EXISTS (
-          SELECT 1 FROM `选课记录表` 
-          WHERE `学生ID` = p_学生ID AND `开课实例ID` = oi.`开课实例ID`
-      )
-    ORDER BY c.`课程ID`;
+    -- 检查学生是否存在
+    IF v_学生院系ID IS NULL THEN
+        -- 返回空结果集，带错误提示
+        SELECT 
+            NULL AS `开课实例ID`,
+            'ERROR' AS `课程ID`,
+            CONCAT('❌ 查询失败: 学生ID ', p_学生ID, ' 不存在或不是学生') AS `课程名称`,
+            0 AS `学分`,
+            NULL AS `开课院系`,
+            NULL AS `教学楼`,
+            NULL AS `房间号`,
+            0 AS `剩余名额`,
+            'ERROR' AS `选课类型`
+        WHERE FALSE;  -- 不返回任何行
+    ELSE
+        SELECT 
+            oi.`开课实例ID`,
+            c.`课程ID`,
+            c.`课程名称`,
+            c.`学分`,
+            d.`院系名称` AS `开课院系`,
+            r.`教学楼`,
+            r.`房间号`,
+            CASE 
+                WHEN c.`院系ID` = v_学生院系ID THEN oi.`对内名额` - oi.`已选对内人数`
+                ELSE oi.`对外名额` - oi.`已选对外人数`
+            END AS `剩余名额`,
+            CASE 
+                WHEN c.`院系ID` = v_学生院系ID THEN '本院系'
+                ELSE '跨院系'
+            END AS `选课类型`
+        FROM `开课实例表` oi
+        JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+        JOIN `院系信息表` d ON c.`院系ID` = d.`院系ID`
+        JOIN `教室信息表` r ON oi.`教室ID` = r.`教室ID`
+        JOIN `学期信息表` s ON oi.`学期ID` = s.`学期ID`
+        WHERE s.`是否当前学期` = TRUE
+          -- 有剩余名额
+          AND (
+              (c.`院系ID` = v_学生院系ID AND oi.`已选对内人数` < oi.`对内名额`)
+              OR
+              (c.`院系ID` != v_学生院系ID AND oi.`已选对外人数` < oi.`对外名额`)
+          )
+          -- 未选过该课程
+          AND NOT EXISTS (
+              SELECT 1 FROM `选课记录表` 
+              WHERE `学生ID` = p_学生ID AND `开课实例ID` = oi.`开课实例ID`
+          )
+          -- 【关键修复】排除时间冲突的课程（不包括同一门课）
+          AND NOT EXISTS (
+              SELECT 1
+              FROM `选课记录表` sc
+              JOIN `上课时间表` t1 ON sc.`开课实例ID` = t1.`开课实例ID`
+              JOIN `上课时间表` t2 ON t2.`开课实例ID` = oi.`开课实例ID`
+              WHERE sc.`学生ID` = p_学生ID
+                AND sc.`开课实例ID` != oi.`开课实例ID`  -- 排除同一门课
+                AND t1.`时间段ID` = t2.`时间段ID`
+                -- 周次范围重叠检查
+                AND t1.`起始周` <= t2.`结束周`
+                AND t1.`结束周` >= t2.`起始周`
+                -- 单双周冲突检查
+                AND (
+                    t1.`单双周` = '全部' OR 
+                    t2.`单双周` = '全部' OR 
+                    t1.`单双周` = t2.`单双周`
+                )
+          )
+        ORDER BY c.`课程ID`;
+    END IF;
 END$$
 DELIMITER ;
 
@@ -554,23 +756,44 @@ BEGIN
     DECLARE v_姓名 VARCHAR(50);
     DECLARE v_用户ID INT;
     DECLARE v_单条消息 VARCHAR(255);
+    DECLARE v_院系名称 VARCHAR(100);
     
     SET p_成功数 = 0;
     
-    WHILE v_计数 < p_数量 DO
-        SET v_学号 = CONCAT(p_学号前缀, LPAD(p_起始编号 + v_计数, 3, '0'));
-        SET v_姓名 = CONCAT('学生', LPAD(p_起始编号 + v_计数, 3, '0'));
+    -- 参数验证
+    IF p_学号前缀 IS NULL OR TRIM(p_学号前缀) = '' THEN
+        SET p_message = '❌ 批量添加失败: 学号前缀不能为空';
+        SET p_成功数 = 0;
+    ELSEIF p_数量 IS NULL OR p_数量 <= 0 THEN
+        SET p_message = CONCAT('❌ 批量添加失败: 数量必须大于0 (当前: ', COALESCE(p_数量, 'NULL'), ')');
+        SET p_成功数 = 0;
+    ELSEIF p_数量 > 1000 THEN
+        SET p_message = CONCAT('❌ 批量添加失败: 一次最多添加1000个学生 (当前: ', p_数量, ')');
+        SET p_成功数 = 0;
+    ELSEIF NOT EXISTS (SELECT 1 FROM `院系信息表` WHERE `院系ID` = p_院系ID) THEN
+        SET p_message = CONCAT('❌ 批量添加失败: 院系ID ', p_院系ID, ' 不存在');
+        SET p_成功数 = 0;
+    ELSE
+        -- 获取院系名称
+        SELECT `院系名称` INTO v_院系名称 FROM `院系信息表` WHERE `院系ID` = p_院系ID;
         
-        CALL sp_add_user(v_学号, v_姓名, '123456', '学生', p_院系ID, v_用户ID, v_单条消息);
+        -- 批量添加
+        WHILE v_计数 < p_数量 DO
+            SET v_学号 = CONCAT(p_学号前缀, LPAD(p_起始编号 + v_计数, 3, '0'));
+            SET v_姓名 = CONCAT('学生', LPAD(p_起始编号 + v_计数, 3, '0'));
+            
+            CALL sp_add_user(v_学号, v_姓名, '123456', '学生', p_院系ID, v_用户ID, v_单条消息);
+            
+            IF v_用户ID > 0 THEN
+                SET p_成功数 = p_成功数 + 1;
+            END IF;
+            
+            SET v_计数 = v_计数 + 1;
+        END WHILE;
         
-        IF v_用户ID > 0 THEN
-            SET p_成功数 = p_成功数 + 1;
-        END IF;
-        
-        SET v_计数 = v_计数 + 1;
-    END WHILE;
-    
-    SET p_message = CONCAT('批量添加完成: 成功', p_成功数, '个,失败', p_数量 - p_成功数, '个');
+        SET p_message = CONCAT('✅ 批量添加完成: 目标', p_数量, '个, 成功', p_成功数, '个, 失败', 
+                              p_数量 - p_成功数, '个 (院系: ', v_院系名称, ')');
+    END IF;
 END$$
 DELIMITER ;
 
