@@ -156,6 +156,7 @@ async def get_student_schedule(
             # 转换为响应模型
             schedule_list = [
                 StudentSchedule(
+                    instance_id=s['开课实例ID'],  # 添加开课实例ID
                     course_id=s['课程ID'],
                     course_name=s['课程名称'],
                     credit=float(s['学分']),

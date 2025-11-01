@@ -197,12 +197,22 @@ const handleDrop = (course) => {
     }
   ).then(async () => {
     try {
-      // 需要获取instance_id，这里简化处理
-      // 实际应该在scheduleData中包含instance_id
-      ElMessage.warning('退课功能需要开课实例ID，请联系管理员')
+      // 使用course中的instance_id进行退课
+      const res = await request.post(
+        `/students/${authStore.userId}/drop`,
+        { instance_id: course.instance_id }
+      )
+      
+      if (res.success) {
+        ElMessage.success(res.message || '退课成功')
+        // 重新加载课表
+        await fetchSchedule()
+      }
     } catch (error) {
-      ElMessage.error('退课失败')
+      ElMessage.error(error.response?.data?.message || '退课失败')
     }
+  }).catch(() => {
+    // 用户取消
   })
 }
 

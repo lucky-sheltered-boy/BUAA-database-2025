@@ -42,6 +42,7 @@ class AvailableCourse(BaseModel):
 class StudentSchedule(BaseModel):
     """学生课表"""
     
+    instance_id: int  # 添加开课实例ID用于退课
     course_id: str
     course_name: str
     credit: float

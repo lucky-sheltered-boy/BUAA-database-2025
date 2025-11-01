@@ -46,6 +46,14 @@
             <el-icon><TrendCharts /></el-icon>
             <span>选课统计</span>
           </el-menu-item>
+          <el-menu-item index="/admin/users">
+            <el-icon><User /></el-icon>
+            <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/courses">
+            <el-icon><Reading /></el-icon>
+            <span>课程管理</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -63,7 +71,7 @@ import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   School, ArrowDown, User, OfficeBuilding, SwitchButton,
-  DataAnalysis, TrendCharts
+  DataAnalysis, TrendCharts, Reading
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

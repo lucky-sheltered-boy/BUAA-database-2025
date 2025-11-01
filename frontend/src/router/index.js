@@ -84,6 +84,18 @@ const routes = [
         name: 'Statistics',
         component: () => import('@/views/admin/Statistics.vue'),
         meta: { title: '选课统计' }
+      },
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: () => import('@/views/admin/UserManagement.vue'),
+        meta: { title: '用户管理' }
+      },
+      {
+        path: 'courses',
+        name: 'CourseManagement',
+        component: () => import('@/views/admin/CourseManagement.vue'),
+        meta: { title: '课程管理' }
       }
     ]
   }

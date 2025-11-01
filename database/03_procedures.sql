@@ -589,6 +589,7 @@ CREATE PROCEDURE `sp_get_student_schedule`(
 )
 BEGIN
     SELECT 
+        oi.`开课实例ID`,  -- 添加开课实例ID，用于退课
         c.`课程ID`,
         c.`课程名称`,
         c.`学分`,
