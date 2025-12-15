@@ -36,6 +36,12 @@ const routes = [
         name: 'StudentSchedule',
         component: () => import('@/views/student/MySchedule.vue'),
         meta: { title: '我的课表' }
+      },
+      {
+        path: 'change-password',
+        name: 'StudentChangePassword',
+        component: () => import('@/views/student/ChangePassword.vue'),
+        meta: { title: '修改密码' }
       }
     ]
   },
@@ -63,6 +69,12 @@ const routes = [
         name: 'StudentList',
         component: () => import('@/views/teacher/StudentList.vue'),
         meta: { title: '学生名单' }
+      },
+      {
+        path: 'change-password',
+        name: 'TeacherChangePassword',
+        component: () => import('@/views/teacher/ChangePassword.vue'),
+        meta: { title: '修改密码' }
       }
     ]
   },
@@ -96,6 +108,18 @@ const routes = [
         name: 'CourseManagement',
         component: () => import('@/views/admin/CourseManagement.vue'),
         meta: { title: '课程管理' }
+      },
+      {
+        path: 'instances',
+        name: 'InstanceManagement',
+        component: () => import('@/views/admin/InstanceManagement.vue'),
+        meta: { title: '开课管理' }
+      },
+      {
+        path: 'change-password',
+        name: 'AdminChangePassword',
+        component: () => import('@/views/admin/ChangePassword.vue'),
+        meta: { title: '修改密码' }
       }
     ]
   }

@@ -132,8 +132,7 @@ const groupedCourses = computed(() => {
     if (!courseMap.has(key)) {
       courseMap.set(key, {
         ...item,
-        timeSlots: [],
-        instance_id: null // 需要从某处获取
+        timeSlots: []
       })
     }
     
@@ -178,10 +177,19 @@ const viewStudents = async (course) => {
   studentsLoading.value = true
   
   try {
-    // 注意：这里需要instance_id，实际应该从后端返回
-    // 暂时使用course_id作为替代（需要修改后端或前端逻辑）
-    ElMessage.warning('查看学生名单功能需要开课实例ID，请确保后端返回该字段')
-    students.value = []
+    if (!course.instance_id) {
+      ElMessage.warning('未获取到开课实例ID')
+      students.value = []
+      return
+    }
+
+    const res = await request.get(
+      `/teachers/${authStore.userId}/students?instance_id=${course.instance_id}`
+    )
+    
+    if (res.success) {
+      students.value = res.data || []
+    }
   } catch (error) {
     ElMessage.error('获取学生名单失败')
   } finally {

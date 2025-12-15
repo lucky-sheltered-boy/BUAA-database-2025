@@ -36,6 +36,7 @@ class AvailableCourse(BaseModel):
     building: str
     room: str
     remaining_quota: int
+    total_quota: int  # 添加总名额字段
     enroll_type: str  # 本院系/跨院系
 
 

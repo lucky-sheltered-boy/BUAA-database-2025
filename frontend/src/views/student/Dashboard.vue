@@ -124,15 +124,21 @@ const fetchStats = async () => {
     )
     if (scheduleRes.success) {
       const courses = scheduleRes.data || []
-      stats.value.totalCourses = courses.length
       
-      // 计算总学分（去重课程）
+      // 按开课实例ID去重统计课程数（一门课可能有多个上课时间）
       const uniqueCourses = new Map()
       courses.forEach(course => {
-        if (!uniqueCourses.has(course.course_id)) {
-          uniqueCourses.set(course.course_id, course.credit)
+        // 使用开课实例ID作为唯一标识
+        const key = course.instance_id || course.course_id
+        if (!uniqueCourses.has(key)) {
+          uniqueCourses.set(key, course.credit)
         }
       })
+      
+      // 已选课程数 = 唯一开课实例数
+      stats.value.totalCourses = uniqueCourses.size
+      
+      // 计算总学分
       stats.value.totalCredits = Array.from(uniqueCourses.values())
         .reduce((sum, credit) => sum + credit, 0)
       

@@ -30,6 +30,7 @@ async def get_teacher_schedule(
             # 转换为响应格式
             schedule_list = [
                 {
+                    "instance_id": s['开课实例ID'],
                     "course_id": s['课程ID'],
                     "course_name": s['课程名称'],
                     "weekday": s['星期'],

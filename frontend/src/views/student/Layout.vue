@@ -57,6 +57,10 @@
             <el-icon><Calendar /></el-icon>
             <span>我的课表</span>
           </el-menu-item>
+          <el-menu-item index="/student/change-password">
+            <el-icon><Lock /></el-icon>
+            <span>修改密码</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -75,7 +79,7 @@ import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   School, ArrowDown, User, OfficeBuilding, SwitchButton,
-  HomeFilled, Reading, Calendar
+  HomeFilled, Reading, Calendar, Lock
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

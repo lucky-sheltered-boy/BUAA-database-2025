@@ -283,6 +283,33 @@ class StoredProcedures:
         except pymysql.Error as e:
             logger.error(f"调用 sp_get_enrollment_statistics 失败: {e}")
             raise DatabaseError(f"查询选课统计失败: {str(e)}")
+    
+    @staticmethod
+    def sp_change_password(cursor, user_id: int, old_password: str, new_password: str) -> str:
+        """
+        调用 sp_change_password 存储过程 - 修改用户密码
+        
+        Args:
+            user_id: 用户ID
+            old_password: 原密码
+            new_password: 新密码
+            
+        Returns:
+            操作结果消息
+        """
+        try:
+            cursor.callproc('sp_change_password', (user_id, old_password, new_password, ''))
+            cursor.execute('SELECT @_sp_change_password_3')
+            result = cursor.fetchone()
+            message = result['@_sp_change_password_3']
+            
+            if '失败' in message:
+                raise BusinessError(message)
+            
+            return message
+        except pymysql.Error as e:
+            logger.error(f"调用 sp_change_password 失败: {e}")
+            raise DatabaseError(f"修改密码失败: {str(e)}")
 
 
 # 全局实例

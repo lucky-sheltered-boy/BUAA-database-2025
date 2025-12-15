@@ -1,19 +1,20 @@
 """
 认证 API 路由
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from datetime import timedelta
 
-from app.models.auth import LoginRequest, TokenResponse, RefreshTokenRequest
+from app.models.auth import LoginRequest, TokenResponse, RefreshTokenRequest, ChangePasswordRequest
 from app.models.common import ResponseModel
 from app.utils.security import (
     verify_password, create_access_token, create_refresh_token,
     verify_token
 )
 from app.database import db_pool
+from app.dal.stored_procedures import sp
 from app.config import settings
 from app.utils.logger import logger
-from app.utils.exceptions import AuthenticationError
+from app.utils.exceptions import AuthenticationError, BusinessError
 
 router = APIRouter()
 
@@ -180,3 +181,40 @@ async def refresh_token(request: RefreshTokenRequest):
     except Exception as e:
         logger.error(f"刷新令牌失败: {str(e)}")
         raise AuthenticationError("刷新令牌失败")
+
+
+@router.post("/change-password", response_model=ResponseModel[dict])
+async def change_password(
+    request: ChangePasswordRequest,
+    user_id: int = Query(..., description="用户ID", gt=0)
+):
+    """
+    修改用户密码
+    
+    - **user_id**: 用户ID（从查询参数获取）
+    - **old_password**: 原密码
+    - **new_password**: 新密码（至少6位）
+    """
+    try:
+        with db_pool.get_cursor(commit=True) as cursor:
+            message = sp.sp_change_password(
+                cursor,
+                user_id,
+                request.old_password,
+                request.new_password
+            )
+            
+            logger.info(f"用户 {user_id} 修改密码成功")
+            
+            return ResponseModel(
+                success=True,
+                code=200,
+                message=message,
+                data=None
+            )
+            
+    except BusinessError:
+        raise
+    except Exception as e:
+        logger.error(f"修改密码失败: {str(e)}")
+        raise

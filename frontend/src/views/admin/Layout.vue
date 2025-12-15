@@ -54,6 +54,14 @@
             <el-icon><Reading /></el-icon>
             <span>课程管理</span>
           </el-menu-item>
+          <el-menu-item index="/admin/instances">
+            <el-icon><Calendar /></el-icon>
+            <span>开课管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/change-password">
+            <el-icon><Lock /></el-icon>
+            <span>修改密码</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -71,7 +79,7 @@ import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   School, ArrowDown, User, OfficeBuilding, SwitchButton,
-  DataAnalysis, TrendCharts, Reading
+  DataAnalysis, TrendCharts, Reading, Lock, Calendar
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

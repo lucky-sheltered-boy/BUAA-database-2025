@@ -42,6 +42,7 @@ async def get_available_courses(
                     building=c['教学楼'],
                     room=c['房间号'],
                     remaining_quota=c['剩余名额'],
+                    total_quota=c['总名额'],
                     enroll_type=c['选课类型']
                 )
                 for c in courses

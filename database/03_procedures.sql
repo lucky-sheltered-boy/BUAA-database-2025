@@ -624,8 +624,7 @@ CREATE PROCEDURE `sp_get_teacher_schedule`(
     IN p_学期ID INT
 )
 BEGIN
-    SELECT 
-        c.`课程ID`,
+    SELECT         oi.`开课实例ID`,        c.`课程ID`,
         c.`课程名称`,
         ts.`星期`,
         ts.`开始时间`,
@@ -693,6 +692,10 @@ BEGIN
                 WHEN c.`院系ID` = v_学生院系ID THEN oi.`对内名额` - oi.`已选对内人数`
                 ELSE oi.`对外名额` - oi.`已选对外人数`
             END AS `剩余名额`,
+            CASE 
+                WHEN c.`院系ID` = v_学生院系ID THEN oi.`对内名额`
+                ELSE oi.`对外名额`
+            END AS `总名额`,
             CASE 
                 WHEN c.`院系ID` = v_学生院系ID THEN '本院系'
                 ELSE '跨院系'
@@ -824,6 +827,48 @@ BEGIN
     JOIN `院系信息表` d ON c.`院系ID` = d.`院系ID`
     WHERE oi.`学期ID` = p_学期ID
     ORDER BY c.`课程ID`;
+END$$
+DELIMITER ;
+
+-- 存储过程15: 修改用户密码
+DROP PROCEDURE IF EXISTS `sp_change_password`;
+DELIMITER $$
+CREATE PROCEDURE `sp_change_password`(
+    IN p_用户ID INT,
+    IN p_旧密码 VARCHAR(255),
+    IN p_新密码 VARCHAR(255),
+    OUT p_message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_当前密码哈希 VARCHAR(255);
+    DECLARE v_新密码哈希 VARCHAR(255);
+    
+    -- 获取当前密码哈希
+    SELECT `密码哈希` INTO v_当前密码哈希
+    FROM `用户信息表`
+    WHERE `用户ID` = p_用户ID;
+    
+    -- 验证用户是否存在
+    IF v_当前密码哈希 IS NULL THEN
+        SET p_message = '❌ 修改密码失败: 用户不存在';
+    ELSE
+        -- 验证旧密码（使用MD5格式）
+        SET v_新密码哈希 = CONCAT('hash_', MD5(p_旧密码));
+        
+        IF v_当前密码哈希 != v_新密码哈希 THEN
+            SET p_message = '❌ 修改密码失败: 原密码不正确';
+        ELSE
+            -- 生成新密码哈希
+            SET v_新密码哈希 = CONCAT('hash_', MD5(p_新密码));
+            
+            -- 更新密码
+            UPDATE `用户信息表`
+            SET `密码哈希` = v_新密码哈希
+            WHERE `用户ID` = p_用户ID;
+            
+            SET p_message = '✓ 密码修改成功';
+        END IF;
+    END IF;
 END$$
 DELIMITER ;
 

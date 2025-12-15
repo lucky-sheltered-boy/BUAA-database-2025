@@ -61,9 +61,9 @@
             <el-icon color="#409EFF"><User /></el-icon>
             <span>学生: 2021001</span>
           </div>
-          <div class="account-card" @click="quickLogin('T001', '123456')">
+          <div class="account-card" @click="quickLogin('T1001', '123456')">
             <el-icon color="#67C23A"><Avatar /></el-icon>
-            <span>教师: T001</span>
+            <span>教师: T1001</span>
           </div>
           <div class="account-card" @click="quickLogin('A001', '123456')">
             <el-icon color="#E6A23C"><Management /></el-icon>

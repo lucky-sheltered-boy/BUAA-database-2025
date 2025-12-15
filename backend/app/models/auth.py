@@ -61,3 +61,18 @@ class CurrentUser(BaseModel):
     name: str
     role: str  # 学生/教师/教务
     department_id: int
+
+
+class ChangePasswordRequest(BaseModel):
+    """修改密码请求"""
+    
+    old_password: str = Field(..., description="原密码", min_length=6, max_length=50)
+    new_password: str = Field(..., description="新密码", min_length=6, max_length=50)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "old_password": "123456",
+                "new_password": "newpass123"
+            }
+        }
