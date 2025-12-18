@@ -1,11 +1,16 @@
 <template>
   <div class="my-schedule">
-    <el-card>
+    <el-card class="main-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>我的课表</span>
+          <div class="header-left">
+            <span class="header-title">我的课表</span>
+            <el-tag type="success" effect="plain" class="count-tag">
+              已选 {{ groupedCourses.length }} 门课程
+            </el-tag>
+          </div>
           <div class="header-actions">
-            <el-button @click="fetchSchedule" :loading="loading">
+            <el-button type="primary" @click="fetchSchedule" :loading="loading" plain>
               <el-icon><Refresh /></el-icon>
               刷新
             </el-button>
@@ -13,102 +18,81 @@
         </div>
       </template>
 
-      <div v-loading="loading">
-        <!-- 课程列表视图 -->
-        <div class="course-list" v-if="scheduleData.length > 0">
-          <el-row :gutter="20">
-            <el-col 
-              v-for="(course, index) in groupedCourses" 
-              :key="index"
-              :xs="24" :sm="12" :md="8"
-            >
-              <el-card class="schedule-card" shadow="hover">
-                <div class="schedule-header">
-                  <h3>{{ course.course_name }}</h3>
-                  <el-tag type="success">{{ course.credit }}学分</el-tag>
-                </div>
+      <div v-loading="loading" class="schedule-container">
+        <el-empty 
+          v-if="!loading && scheduleData.length === 0" 
+          description="暂无课程安排"
+        />
 
-                <div class="schedule-info">
-                  <div class="info-item">
-                    <el-icon><Reading /></el-icon>
-                    <span>{{ course.course_id }}</span>
+        <template v-else>
+          <!-- 课程列表视图 -->
+          <div class="course-list">
+            <el-row :gutter="20">
+              <el-col 
+                v-for="(course, index) in groupedCourses" 
+                :key="index"
+                :xs="24" :sm="12" :md="8" :lg="6"
+                class="course-col"
+              >
+                <el-card class="schedule-card" shadow="hover">
+                  <div class="schedule-header">
+                    <div class="header-main">
+                      <h3 class="course-title" :title="course.course_name">{{ course.course_name }}</h3>
+                      <el-tag type="success" size="small" effect="plain">{{ course.credit }}学分</el-tag>
+                    </div>
                   </div>
-                  <div class="info-item">
-                    <el-icon><User /></el-icon>
-                    <span>{{ course.teacher_name }}</span>
-                  </div>
-                  <div class="info-item">
-                    <el-icon><Location /></el-icon>
-                    <span>{{ course.building }} {{ course.room }}</span>
-                  </div>
-                </div>
 
-                <el-divider />
+                  <div class="schedule-body">
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <el-icon><Reading /></el-icon>
+                        <span>{{ course.course_id }}</span>
+                      </div>
+                      <div class="info-item">
+                        <el-icon><User /></el-icon>
+                        <span>{{ course.teacher_name }}</span>
+                      </div>
+                      <div class="info-item">
+                        <el-icon><Location /></el-icon>
+                        <span>{{ course.location }}</span>
+                      </div>
+                    </div>
 
-                <div class="time-slots">
+                    <div class="time-slots">
+                      <div v-for="(slot, idx) in course.time_slots" :key="idx" class="time-slot-tag">
+                        <el-icon><Timer /></el-icon>
+                        <span>{{ formatTimeSlot(slot) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 课表视图 -->
+          <div class="timetable-view">
+            <div class="timetable-header">
+              <div class="corner-cell">时间/星期</div>
+              <div v-for="day in weekDays" :key="day" class="header-cell">{{ day }}</div>
+            </div>
+            <div class="timetable-body">
+              <div v-for="period in 13" :key="period" class="timetable-row">
+                <div class="period-cell">第{{ period }}节</div>
+                <div v-for="day in 7" :key="day" class="content-cell">
                   <div 
-                    v-for="(slot, idx) in course.timeSlots" 
-                    :key="idx"
-                    class="time-slot"
-                  >
-                    <el-tag size="small">{{ slot.weekday }}</el-tag>
-                    <span>{{ slot.start_time }}-{{ slot.end_time }}</span>
-                    <span class="week-range">{{ slot.week_range }} {{ slot.week_type }}</span>
-                  </div>
-                </div>
-
-                <el-button 
-                  type="danger" 
-                  plain
-                  size="small"
-                  class="drop-btn"
-                  @click="handleDrop(course)"
-                >
-                  <el-icon><Delete /></el-icon>
-                  退课
-                </el-button>
-              </el-card>
-            </el-col>
-          </el-row>
-        </div>
-
-        <!-- 课表格视图 -->
-        <div class="schedule-table-view" v-if="scheduleData.length > 0">
-          <el-divider>课表格式</el-divider>
-          <table class="schedule-table">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th v-for="day in weekdays" :key="day">{{ day }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="slot in timeSlots" :key="slot.value">
-                <td class="time-cell">
-                  <div>{{ slot.label }}</div>
-                  <div class="time-range">{{ slot.time }}</div>
-                </td>
-                <td 
-                  v-for="day in weekdays" 
-                  :key="day"
-                  class="course-cell"
-                >
-                  <div 
-                    v-for="course in getCourseAtTime(day, slot.value)"
-                    :key="course.course_id"
+                    v-if="getCourseAt(day, period)"
                     class="course-block"
+                    :style="getCourseStyle(getCourseAt(day, period))"
                   >
-                    <div class="course-name">{{ course.course_name }}</div>
-                    <div class="course-detail">{{ course.building }} {{ course.room }}</div>
-                    <div class="course-teacher">{{ course.teacher_name }}</div>
+                    <div class="course-name-mini">{{ getCourseAt(day, period).course_name }}</div>
+                    <div class="course-loc-mini">{{ getCourseAt(day, period).location }}</div>
                   </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <el-empty v-if="!loading && scheduleData.length === 0" description="暂无课程安排" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </el-card>
   </div>
@@ -116,104 +100,85 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSemesterStore } from '@/stores/semester'
+import { getWeekdayIndex } from '@/utils/helpers'
 import request from '@/utils/request'
-import { TIME_SLOTS } from '@/utils/constants'
-import { Refresh, Reading, User, Location, Delete } from '@element-plus/icons-vue'
+import { Refresh, Reading, User, Location, Timer } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
 const semesterStore = useSemesterStore()
-
 const loading = ref(false)
 const scheduleData = ref([])
+const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+const colors = [
+  '#e1f3d8', '#faecd8', '#d9ecff', '#fde2e2', 
+  '#e9e9eb', '#d1edc4', '#e8d6f9', '#c6e2ff'
+]
 
-const weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五']
-const timeSlots = TIME_SLOTS
-
-// 按课程分组
+// 按课程分组的数据（用于列表显示）
 const groupedCourses = computed(() => {
-  const courseMap = new Map()
-  
+  const map = new Map()
   scheduleData.value.forEach(item => {
-    if (!courseMap.has(item.course_id)) {
-      courseMap.set(item.course_id, {
-        ...item,
-        timeSlots: []
+    if (!map.has(item.course_id)) {
+      map.set(item.course_id, {
+        course_id: item.course_id,
+        course_name: item.course_name,
+        teacher_name: item.teacher_name,
+        credit: item.credit,
+        location: `${item.building} ${item.room}`,
+        time_slots: []
       })
     }
-    
-    courseMap.get(item.course_id).timeSlots.push({
+    map.get(item.course_id).time_slots.push({
       weekday: item.weekday,
       start_time: item.start_time,
-      end_time: item.end_time,
-      week_range: item.week_range,
-      week_type: item.week_type
+      end_time: item.end_time
     })
   })
-  
-  return Array.from(courseMap.values())
+  return Array.from(map.values())
 })
-
-// 获取特定时间的课程
-const getCourseAtTime = (weekday, timeSlot) => {
-  return scheduleData.value.filter(course => {
-    if (course.weekday !== weekday) return false
-    
-    // 简单的时间匹配（实际应该根据start_time和end_time精确匹配）
-    const slot = TIME_SLOTS.find(s => s.value === timeSlot)
-    if (!slot) return false
-    
-    return course.start_time.includes(slot.time.split('-')[0].substring(0, 2))
-  })
-}
 
 const fetchSchedule = async () => {
   loading.value = true
   try {
-    const res = await request.get(
-      `/students/${authStore.userId}/schedule?semester_id=${semesterStore.currentSemesterId}`
-    )
-    
-    if (res.success) {
-      scheduleData.value = res.data || []
-    }
+    const res = await request.get(`/students/${authStore.userId}/schedule`, {
+      params: { semester_id: semesterStore.currentSemesterId }
+    })
+    // res 为数组（request.js 已返回 data）
+    scheduleData.value = Array.isArray(res) ? res : []
   } catch (error) {
+    console.error('获取课表失败:', error)
     ElMessage.error('获取课表失败')
   } finally {
     loading.value = false
   }
 }
 
-const handleDrop = (course) => {
-  ElMessageBox.confirm(
-    `确定要退选《${course.course_name}》吗？退课后可能无法再次选上。`,
-    '退课确认',
-    {
-      confirmButtonText: '确定退课',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 使用course中的instance_id进行退课
-      const res = await request.post(
-        `/students/${authStore.userId}/drop`,
-        { instance_id: course.instance_id }
-      )
-      
-      if (res.success) {
-        ElMessage.success(res.message || '退课成功')
-        // 重新加载课表
-        await fetchSchedule()
-      }
-    } catch (error) {
-      ElMessage.error(error.response?.data?.message || '退课失败')
-    }
-  }).catch(() => {
-    // 用户取消
-  })
+const formatTimeSlot = (slot) => {
+  if (!slot) return ''
+  // 后端提供 weekday（如“星期一”）与 start/end_time
+  const idx = getWeekdayIndex(slot.weekday)
+  const days = ['一', '二', '三', '四', '五', '六', '日']
+  const dayText = idx >= 1 && idx <= 7 ? `周${days[idx - 1]}` : slot.weekday || ''
+  return `${dayText} ${slot.start_time}-${slot.end_time}`
+}
+
+// 由于后端返回的是具体时间（非第几节），这里不在课表栅格中匹配“第几节”，
+// timetable 仍显示，但不渲染块（避免空转/报错）。
+const getCourseAt = () => {
+  return undefined
+}
+
+const getCourseStyle = (course) => {
+  // 根据课程ID生成固定的颜色索引
+  const index = course.course_id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+  return {
+    backgroundColor: colors[index],
+    color: '#606266',
+    borderLeft: `3px solid ${colors[index].replace('0.1', '1').replace('d8', 'b0')}` // 简单的加深颜色逻辑
+  }
 }
 
 onMounted(() => {
@@ -223,8 +188,24 @@ onMounted(() => {
 
 <style scoped>
 .my-schedule {
-  max-width: 1400px;
-  margin: 0 auto;
+  padding-bottom: 20px;
+}
+
+.main-card {
+  border: none;
+  background: transparent;
+}
+
+.main-card :deep(.el-card__header) {
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #ebeef5;
+  padding: 16px 24px;
+}
+
+.main-card :deep(.el-card__body) {
+  background: transparent;
+  padding: 20px 0 0 0;
 }
 
 .card-header {
@@ -233,131 +214,187 @@ onMounted(() => {
   align-items: center;
 }
 
-.header-actions {
+.header-left {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .course-list {
-  margin-bottom: 30px;
+  margin-bottom: 24px;
+}
+
+.course-col {
+  margin-bottom: 20px;
 }
 
 .schedule-card {
-  margin-bottom: 20px;
+  height: 100%;
+  border-radius: 8px;
+  border: none;
   transition: all 0.3s;
 }
 
 .schedule-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .schedule-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f2f5;
+  margin-bottom: 12px;
+}
+
+.header-main {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 15px;
+  gap: 8px;
 }
 
-.schedule-header h3 {
+.course-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
   color: #303133;
-  flex: 1;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.schedule-info {
-  margin-bottom: 15px;
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
   font-size: 13px;
   color: #606266;
 }
 
 .time-slots {
-  margin: 15px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.time-slot {
+.time-slot-tag {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #606266;
-}
-
-.week-range {
-  color: #909399;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: #f0f2f5;
+  border-radius: 4px;
   font-size: 12px;
+  color: #909399;
 }
 
-.drop-btn {
-  width: 100%;
-  margin-top: 10px;
-}
-
-.schedule-table-view {
-  margin-top: 30px;
-  overflow-x: auto;
-}
-
-.schedule-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-}
-
-.schedule-table th,
-.schedule-table td {
+/* 课表视图样式 */
+.timetable-view {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
   border: 1px solid #ebeef5;
-  padding: 12px 8px;
+}
+
+.timetable-header {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.corner-cell {
+  padding: 12px;
   text-align: center;
-}
-
-.schedule-table th {
-  background: #f5f7fa;
-  color: #606266;
-  font-weight: 600;
-}
-
-.time-cell {
-  background: #fafafa;
-  min-width: 100px;
-}
-
-.time-range {
   font-size: 12px;
   color: #909399;
-  margin-top: 4px;
+  border-right: 1px solid #ebeef5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.course-cell {
-  min-width: 120px;
-  vertical-align: top;
+.header-cell {
+  padding: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: #303133;
+  border-right: 1px solid #ebeef5;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.timetable-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.timetable-row {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  border-bottom: 1px solid #ebeef5;
+  min-height: 60px;
+}
+
+.timetable-row:last-child {
+  border-bottom: none;
+}
+
+.period-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fcfcfc;
+  color: #909399;
+  font-size: 12px;
+  border-right: 1px solid #ebeef5;
+}
+
+.content-cell {
+  border-right: 1px solid #ebeef5;
+  padding: 4px;
+  position: relative;
+}
+
+.content-cell:last-child {
+  border-right: none;
 }
 
 .course-block {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 10px;
-  border-radius: 6px;
-  margin: 4px;
+  height: 100%;
+  padding: 6px;
+  border-radius: 4px;
   font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
 }
 
-.course-name {
+.course-name-mini {
   font-weight: 600;
-  margin-bottom: 4px;
+  line-height: 1.2;
 }
 
-.course-detail,
-.course-teacher {
+.course-loc-mini {
   font-size: 11px;
-  opacity: 0.9;
+  opacity: 0.8;
 }
 </style>

@@ -34,7 +34,8 @@ request.interceptors.response.use(
     
     // 成功响应
     if (res.success) {
-      return res
+      // 统一返回后端 ResponseModel 的 data 字段
+      return res.data
     }
     
     // 业务错误
