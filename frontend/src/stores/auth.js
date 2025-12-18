@@ -23,18 +23,18 @@ export const useAuthStore = defineStore('auth', () => {
         password
       })
 
-      if (res.success && res.data) {
+      if (res) {
         // 保存token
-        token.value = res.data.access_token
-        refreshToken.value = res.data.refresh_token
-        userInfo.value = res.data.user_info
+        token.value = res.access_token
+        refreshToken.value = res.refresh_token
+        userInfo.value = res.user_info
 
         // 持久化到localStorage
-        localStorage.setItem('token', res.data.access_token)
-        localStorage.setItem('refreshToken', res.data.refresh_token)
-        localStorage.setItem('userInfo', JSON.stringify(res.data.user_info))
+        localStorage.setItem('token', res.access_token)
+        localStorage.setItem('refreshToken', res.refresh_token)
+        localStorage.setItem('userInfo', JSON.stringify(res.user_info))
 
-        return res.data.user_info
+        return res.user_info
       }
     } catch (error) {
       throw error
@@ -69,14 +69,14 @@ export const useAuthStore = defineStore('auth', () => {
         refresh_token: refreshToken.value
       })
 
-      if (res.success && res.data) {
-        token.value = res.data.access_token
-        refreshToken.value = res.data.refresh_token
-        userInfo.value = res.data.user_info
+      if (res) {
+        token.value = res.access_token
+        refreshToken.value = res.refresh_token
+        userInfo.value = res.user_info
 
-        localStorage.setItem('token', res.data.access_token)
-        localStorage.setItem('refreshToken', res.data.refresh_token)
-        localStorage.setItem('userInfo', JSON.stringify(res.data.user_info))
+        localStorage.setItem('token', res.access_token)
+        localStorage.setItem('refreshToken', res.refresh_token)
+        localStorage.setItem('userInfo', JSON.stringify(res.user_info))
 
         return true
       }

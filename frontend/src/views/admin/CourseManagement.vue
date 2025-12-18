@@ -167,8 +167,8 @@ const rules = {
 const fetchDepartments = async () => {
   try {
     const res = await request.get('/admin/departments')
-    if (res.success) {
-      departments.value = res.data
+    if (res) {
+      departments.value = res
     }
   } catch (error) {
     console.error('Failed to fetch departments:', error)
@@ -181,8 +181,8 @@ const fetchCourses = async () => {
     const res = await request.get('/admin/courses', {
       params: filters
     })
-    if (res.success) {
-      courses.value = res.data
+    if (res) {
+      courses.value = res
     }
   } catch (error) {
     ElMessage.error('获取课程列表失败')
@@ -207,7 +207,7 @@ const handleSubmit = async () => {
       submitting.value = true
       try {
         const res = await request.post('/admin/courses', form)
-        if (res.success) {
+        if (res) {
           ElMessage.success('添加课程成功')
           dialogVisible.value = false
           fetchCourses()

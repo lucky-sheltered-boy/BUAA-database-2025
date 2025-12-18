@@ -177,7 +177,7 @@ const handleSubmit = async () => {
           params: { user_id: authStore.userId }
         })
         
-        if (res.success) {
+        if (res) {
           ElMessage.success('密码修改成功')
           resetForm()
         }

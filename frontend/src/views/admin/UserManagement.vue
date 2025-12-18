@@ -257,10 +257,10 @@ const handleSubmit = async () => {
       submitting.value = true
       try {
         if (isEdit.value) {
-          await request.put(`/api/admin/users/${form.user_id}`, form)
+          await request.put(`/admin/users/${form.user_id}`, form)
           ElMessage.success('更新成功')
         } else {
-          await request.post('/api/admin/users', form)
+          await request.post('/admin/users', form)
           ElMessage.success('创建成功')
         }
         dialogVisible.value = false
