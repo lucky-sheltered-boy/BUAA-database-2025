@@ -66,6 +66,9 @@
             >
               {{ loading ? '登录中...' : '登 录' }}
             </el-button>
+            <div class="register-link">
+              <el-button link type="primary" @click="showRegisterDialog = true">注册新账号</el-button>
+            </div>
           </el-form-item>
         </el-form>
 
@@ -90,6 +93,71 @@
         </div>
       </div>
     </div>
+
+    <!-- 注册弹窗 -->
+    <el-dialog
+      v-model="showRegisterDialog"
+      title="注册新账号"
+      width="500px"
+      :close-on-click-modal="false"
+      @close="resetRegisterForm"
+      append-to-body
+    >
+      <el-form
+        ref="registerFormRef"
+        :model="registerForm"
+        :rules="registerRules"
+        label-width="80px"
+        status-icon
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="registerForm.username" placeholder="请输入学号/工号" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model="registerForm.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="姓名" prop="full_name">
+          <el-input v-model="registerForm.full_name" placeholder="请输入真实姓名" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="registerForm.role" placeholder="请选择角色" style="width: 100%">
+            <el-option label="学生" value="学生" />
+            <el-option label="教师" value="教师" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="院系" prop="department_id">
+          <el-select v-model="registerForm.department_id" placeholder="请选择院系" style="width: 100%">
+            <el-option
+              v-for="dept in departments"
+              :key="dept.department_id"
+              :label="dept.department_name"
+              :value="dept.department_id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showRegisterDialog = false">取消</el-button>
+          <el-button type="primary" :loading="registerLoading" @click="handleRegister">
+            注册
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -98,6 +166,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { register, getDepartments } from '@/api'
 import { School, User, Lock, Avatar, Management, Check } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -105,6 +174,82 @@ const authStore = useAuthStore()
 
 const formRef = ref()
 const loading = ref(false)
+
+// 注册相关
+const showRegisterDialog = ref(false)
+const registerLoading = ref(false)
+const registerFormRef = ref()
+const departments = ref([])
+
+const registerForm = reactive({
+  username: '',
+  password: '',
+  confirmPassword: '',
+  full_name: '',
+  role: '学生',
+  department_id: ''
+})
+
+const validatePass2 = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== registerForm.password) {
+    callback(new Error('两次输入密码不一致!'))
+  } else {
+    callback()
+  }
+}
+
+const registerRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  confirmPassword: [{ validator: validatePass2, trigger: 'blur' }],
+  full_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
+  department_id: [{ required: true, message: '请选择院系', trigger: 'change' }]
+}
+
+const fetchDepartments = async () => {
+  try {
+    const res = await getDepartments()
+    departments.value = Array.isArray(res) ? res : []
+  } catch (error) {
+    console.error('获取院系失败', error)
+  }
+}
+
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  await registerFormRef.value.validate(async (valid) => {
+    if (valid) {
+      registerLoading.value = true
+      try {
+        const { confirmPassword, ...data } = registerForm
+        await register(data)
+        ElMessage.success('注册成功，请登录')
+        showRegisterDialog.value = false
+      } catch (error) {
+        // Error handled by interceptor
+      } finally {
+        registerLoading.value = false
+      }
+    }
+  })
+}
+
+const resetRegisterForm = () => {
+  if (registerFormRef.value) {
+    registerFormRef.value.resetFields()
+  }
+}
+
+// 监听弹窗打开获取院系
+import { watch } from 'vue'
+watch(showRegisterDialog, (val) => {
+  if (val && departments.value.length === 0) {
+    fetchDepartments()
+  }
+})
 
 const loginForm = reactive({
   username: '',
@@ -275,6 +420,11 @@ const quickLogin = (username, password) => {
   height: 44px;
   font-size: 16px;
   border-radius: 8px;
+  margin-top: 10px;
+}
+
+.register-link {
+  text-align: center;
   margin-top: 10px;
 }
 

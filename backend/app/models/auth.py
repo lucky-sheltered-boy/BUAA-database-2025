@@ -76,3 +76,24 @@ class ChangePasswordRequest(BaseModel):
                 "new_password": "newpass123"
             }
         }
+
+
+class RegisterRequest(BaseModel):
+    """注册请求"""
+    
+    username: str = Field(..., description="学号/工号", min_length=1, max_length=20)
+    name: str = Field(..., description="姓名", min_length=1, max_length=50)
+    password: str = Field(..., description="密码", min_length=6, max_length=50)
+    department_id: int = Field(..., description="院系ID", gt=0)
+    role: str = Field(default="学生", description="角色")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "username": "2024001",
+                "name": "新同学",
+                "password": "password123",
+                "department_id": 1,
+                "role": "学生"
+            }
+        }

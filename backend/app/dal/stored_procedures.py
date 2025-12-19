@@ -170,7 +170,15 @@ class StoredProcedures:
             # 获取输出参数
             cursor.execute('SELECT @_sp_student_enroll_2')
             result = cursor.fetchone()
-            message = result['@_sp_student_enroll_2']
+            
+            # 增加空值检查
+            if not result:
+                raise DatabaseError("选课失败: 无法获取数据库返回结果")
+                
+            message = result.get('@_sp_student_enroll_2')
+            
+            if message is None:
+                raise DatabaseError("选课失败: 数据库响应异常，请重试")
             
             # 检查是否成功
             if '失败' in message or 'ERROR' in message.upper():
@@ -210,7 +218,14 @@ class StoredProcedures:
             cursor.callproc('sp_student_drop', (student_id, instance_id, ''))
             cursor.execute('SELECT @_sp_student_drop_2')
             result = cursor.fetchone()
-            message = result['@_sp_student_drop_2']
+            
+            if not result:
+                raise DatabaseError("退课失败: 无法获取数据库返回结果")
+                
+            message = result.get('@_sp_student_drop_2')
+            
+            if message is None:
+                raise DatabaseError("退课失败: 数据库响应异常，请重试")
             
             if '失败' in message:
                 raise BusinessError(message)
@@ -263,7 +278,7 @@ class StoredProcedures:
         try:
             cursor.callproc('sp_get_available_courses', (student_id,))
             results = cursor.fetchall()
-            return results
+            return results if results is not None else []
         except pymysql.Error as e:
             logger.error(f"调用 sp_get_available_courses 失败: {e}")
             raise DatabaseError(f"查询可选课程失败: {str(e)}")

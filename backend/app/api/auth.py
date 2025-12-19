@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from datetime import timedelta
 
-from app.models.auth import LoginRequest, TokenResponse, RefreshTokenRequest, ChangePasswordRequest
+from app.models.auth import LoginRequest, TokenResponse, RefreshTokenRequest, ChangePasswordRequest, RegisterRequest
 from app.models.common import ResponseModel
 from app.utils.security import (
     verify_password, create_access_token, create_refresh_token,
@@ -17,6 +17,47 @@ from app.utils.logger import logger
 from app.utils.exceptions import AuthenticationError, BusinessError
 
 router = APIRouter()
+
+
+@router.post("/register", response_model=ResponseModel[dict])
+async def register(request: RegisterRequest):
+    """
+    用户注册
+    """
+    try:
+        with db_pool.get_cursor(commit=True) as cursor:
+            # 使用请求中的角色，如果未提供则默认为学生
+            role = request.role if request.role else "学生"
+            
+            # 简单的角色校验
+            if role not in ["学生", "教师"]:
+                role = "学生"
+            
+            user_id, message = sp.sp_add_user(
+                cursor,
+                request.username,
+                request.name,
+                request.password,
+                role,
+                request.department_id
+            )
+            
+            if user_id > 0:
+                logger.info(f"用户注册成功: {request.username}")
+                return ResponseModel(
+                    success=True,
+                    code=200,
+                    message="注册成功，请登录",
+                    data={"user_id": user_id}
+                )
+            else:
+                raise BusinessError(message)
+                
+    except BusinessError:
+        raise
+    except Exception as e:
+        logger.error(f"注册失败: {str(e)}")
+        raise
 
 
 @router.post("/login", response_model=ResponseModel[TokenResponse])

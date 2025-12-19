@@ -1,6 +1,21 @@
 import request from '@/utils/request'
 
 /**
+ * 注册
+ * @param {object} data - 注册信息
+ */
+export function register(data) {
+  return request.post('/auth/register', data)
+}
+
+/**
+ * 获取院系列表
+ */
+export function getDepartments() {
+  return request.get('/common/departments')
+}
+
+/**
  * 登录
  * @param {string} username - 用户名
  * @param {string} password - 密码

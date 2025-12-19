@@ -27,33 +27,49 @@ async def get_available_courses(
     调用存储过程 sp_get_available_courses
     """
     try:
-        with db_pool.get_cursor() as cursor:
-            # 调用存储过程
-            courses = sp.sp_get_available_courses(cursor, student_id)
-            
-            # 转换为响应模型
-            course_list = [
-                AvailableCourse(
-                    instance_id=c['开课实例ID'],
-                    course_id=c['课程ID'],
-                    course_name=c['课程名称'],
-                    credit=float(c['学分']),
-                    department=c['开课院系'],
-                    building=c['教学楼'],
-                    room=c['房间号'],
-                    remaining_quota=c['剩余名额'],
-                    total_quota=c['总名额'],
-                    enroll_type=c['选课类型']
-                )
-                for c in courses
-            ]
-            
-            return ResponseModel(
-                success=True,
-                code=200,
-                message=f"查询到 {len(course_list)} 门可选课程",
-                data=course_list
-            )
+        # 增加重试机制
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                with db_pool.get_cursor() as cursor:
+                    # 调用存储过程
+                    courses = sp.sp_get_available_courses(cursor, student_id)
+                    
+                    # 转换为响应模型
+                    course_list = [
+                        AvailableCourse(
+                            instance_id=c['开课实例ID'],
+                            course_id=c['课程ID'],
+                            course_name=c['课程名称'],
+                            credit=float(c['学分']),
+                            department=c['开课院系'],
+                            building=c['教学楼'],
+                            room=c['房间号'],
+                            remaining_quota=c['剩余名额'],
+                            # 兼容旧版存储过程，如果缺少总名额字段则默认为0
+                            total_quota=c.get('总名额', 0),
+                            enroll_type=c['选课类型']
+                        )
+                        for c in courses
+                    ]
+                    
+                    return ResponseModel(
+                        success=True,
+                        code=200,
+                        message=f"查询到 {len(course_list)} 门可选课程",
+                        data=course_list
+                    )
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                # 检查是否是连接错误 (2006: Gone away, 2013: Lost connection)
+                if '2006' in error_str or '2013' in error_str or 'Lost connection' in error_str:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"数据库连接中断，重试查询可选课程 {attempt + 1}/{max_retries}")
+                        continue
+                raise last_error
             
     except Exception as e:
         logger.error(f"查询可选课程失败: {str(e)}")
@@ -94,10 +110,12 @@ async def enroll_course(
                     )
                     
                 except Exception as e:
-                    # 检查是否是死锁错误
-                    if '1213' in str(e) or 'Deadlock' in str(e):
+                    error_str = str(e)
+                    # 检查是否是死锁错误或连接错误
+                    if '1213' in error_str or 'Deadlock' in error_str or \
+                       '2006' in error_str or '2013' in error_str or 'Lost connection' in error_str:
                         if attempt < max_retries - 1:
-                            logger.warning(f"死锁检测到，重试 {attempt + 1}/{max_retries}")
+                            logger.warning(f"数据库操作异常(死锁或连接中断)，重试 {attempt + 1}/{max_retries}")
                             continue
                     raise
             

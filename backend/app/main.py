@@ -14,7 +14,7 @@ from app.utils.exceptions import BaseAPIException
 from app.models.common import ResponseModel
 
 # 导入路由
-from app.api import auth, students, teachers, statistics, admin
+from app.api import auth, students, teachers, statistics, admin, common
 
 # 定义安全方案（这样 Swagger UI 才会显示 Authorize 按钮）
 security = HTTPBearer()
@@ -202,6 +202,7 @@ app.include_router(students.router, prefix="/api/students", tags=["学生"])
 app.include_router(teachers.router, prefix="/api/teachers", tags=["教师"])
 app.include_router(statistics.router, prefix="/api/statistics", tags=["统计"])
 app.include_router(admin.router, prefix="/api/admin", tags=["管理"])
+app.include_router(common.router, prefix="/api/common", tags=["通用"])
 
 # TODO: 添加更多路由
 # app.include_router(departments.router, prefix="/api/departments", tags=["院系管理"])

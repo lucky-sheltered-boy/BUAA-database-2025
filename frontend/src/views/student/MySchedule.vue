@@ -64,6 +64,17 @@
                         <span>{{ formatTimeSlot(slot) }}</span>
                       </div>
                     </div>
+                    
+                    <div class="action-area">
+                      <el-button 
+                        type="danger" 
+                        size="small" 
+                        plain 
+                        @click="handleDropCourse(course)"
+                      >
+                        退课
+                      </el-button>
+                    </div>
                   </div>
                 </el-card>
               </el-col>
@@ -100,11 +111,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSemesterStore } from '@/stores/semester'
 import { getWeekdayIndex } from '@/utils/helpers'
 import request from '@/utils/request'
+import { dropCourse } from '@/api'
 import { Refresh, Reading, User, Location, Timer } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
@@ -123,6 +135,7 @@ const groupedCourses = computed(() => {
   scheduleData.value.forEach(item => {
     if (!map.has(item.course_id)) {
       map.set(item.course_id, {
+        instance_id: item.instance_id,
         course_id: item.course_id,
         course_name: item.course_name,
         teacher_name: item.teacher_name,
@@ -156,6 +169,26 @@ const fetchSchedule = async () => {
   }
 }
 
+const handleDropCourse = (course) => {
+  ElMessageBox.confirm(
+    `确定要退选课程 "${course.course_name}" 吗？`,
+    '退课确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await dropCourse(authStore.userId, course.instance_id)
+      ElMessage.success('退课成功')
+      fetchSchedule() // 刷新课表
+    } catch (error) {
+      // 错误已在拦截器处理
+    }
+  })
+}
+
 const formatTimeSlot = (slot) => {
   if (!slot) return ''
   // 后端提供 weekday（如“星期一”）与 start/end_time
@@ -167,8 +200,25 @@ const formatTimeSlot = (slot) => {
 
 // 由于后端返回的是具体时间（非第几节），这里不在课表栅格中匹配“第几节”，
 // timetable 仍显示，但不渲染块（避免空转/报错）。
-const getCourseAt = () => {
-  return undefined
+const getCourseAt = (day, period) => {
+  return scheduleData.value.find(course => {
+    const courseDayIdx = getWeekdayIndex(course.weekday)
+    if (courseDayIdx !== day) return false
+    
+    // 简单的映射逻辑：根据开始时间的小时数判断节次
+    // 假设：8:00=1-2节, 10:00=3-4节, 14:00=5-6节, 16:00=7-8节, 19:00=9-10节
+    const startHour = parseInt(course.start_time.split(':')[0])
+    let startPeriod = 0
+    let endPeriod = 0
+    
+    if (startHour === 8) { startPeriod = 1; endPeriod = 2 }
+    else if (startHour === 10) { startPeriod = 3; endPeriod = 4 }
+    else if (startHour === 14) { startPeriod = 5; endPeriod = 6 }
+    else if (startHour === 16) { startPeriod = 7; endPeriod = 8 }
+    else if (startHour === 19) { startPeriod = 9; endPeriod = 10 }
+    
+    return period >= startPeriod && period <= endPeriod
+  })
 }
 
 const getCourseStyle = (course) => {
@@ -177,7 +227,8 @@ const getCourseStyle = (course) => {
   return {
     backgroundColor: colors[index],
     color: '#606266',
-    borderLeft: `3px solid ${colors[index].replace('0.1', '1').replace('d8', 'b0')}` // 简单的加深颜色逻辑
+    borderLeft: `3px solid ${colors[index].replace('0.1', '1').replace('d8', 'b0')}`, // 简单的加深颜色逻辑
+    cursor: 'pointer'
   }
 }
 
@@ -239,6 +290,8 @@ onMounted(() => {
   border-radius: 8px;
   border: none;
   transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .schedule-card:hover {
@@ -265,25 +318,38 @@ onMounted(() => {
   font-weight: 600;
   color: #303133;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 14px;
   color: #606266;
+  overflow: hidden;
+}
+
+.info-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .time-slots {
@@ -301,6 +367,13 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 12px;
   color: #909399;
+}
+
+.action-area {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px dashed #ebeef5;
+  text-align: right;
 }
 
 /* 课表视图样式 */
@@ -350,7 +423,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
   border-bottom: 1px solid #ebeef5;
-  min-height: 60px;
+  min-height: 70px;
 }
 
 .timetable-row:last-child {
@@ -379,13 +452,20 @@ onMounted(() => {
 
 .course-block {
   height: 100%;
-  padding: 6px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 6px;
   font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.course-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .course-name-mini {
