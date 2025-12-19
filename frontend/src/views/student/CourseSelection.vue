@@ -82,6 +82,7 @@
               'is-conflict': checkTimeConflict(course)
             }"
             shadow="hover"
+            :body-style="{ padding: '0px', display: 'flex', flexDirection: 'column', height: '100%' }"
           >
             <div class="course-header">
               <div class="course-title-row">
@@ -431,9 +432,9 @@ onMounted(() => {
 }
 
 .course-header {
-  padding-bottom: 12px;
+  padding: 16px 16px 12px;
   border-bottom: 1px solid #ebeef5;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .course-title-row {
@@ -464,7 +465,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 16px;
 }
 
 .info-item {
@@ -502,12 +503,12 @@ onMounted(() => {
 .text-success { color: #67c23a; }
 
 .course-footer {
-  margin-top: 16px;
-  padding-top: 16px;
+  padding: 12px 16px 16px;
   border-top: 1px solid #ebeef5;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
 }
 
 .credits {

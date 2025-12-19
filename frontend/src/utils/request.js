@@ -48,19 +48,44 @@ request.interceptors.response.use(
     // HTTP错误处理
     if (error.response) {
       const status = error.response.status
-      const detail = error.response.data?.detail || error.message
+      const data = error.response.data
+      let detail = data?.detail || error.message
+      
+      // 处理 Pydantic 验证错误 (422)
+      if (status === 422 && Array.isArray(data?.detail)) {
+        detail = data.detail.map(err => {
+          const field = err.loc[err.loc.length - 1]
+          return `${field}: ${err.msg}`
+        }).join('; ')
+      } else if (data?.message) {
+        // 优先使用后端返回的 message 字段
+        detail = data.message
+      }
+
+      // 将解析后的错误信息赋值给 error.message，供下游组件使用
+      error.message = detail
+      // 标记错误已被拦截器处理，防止重复弹窗
+      error.isHandled = true
       
       switch (status) {
         case 401:
-          ElMessage.error('未授权，请重新登录')
-          const authStore = useAuthStore()
-          authStore.logout()
+          // 如果是登录接口的 401，不进行登出操作，只显示错误信息
+          if (error.config.url.includes('/auth/login')) {
+            ElMessage.error(detail || '用户名或密码错误')
+          } else {
+            ElMessage.error('未授权，请重新登录')
+            const authStore = useAuthStore()
+            authStore.logout()
+          }
           break
         case 403:
           ElMessage.error('拒绝访问')
           break
         case 404:
           ElMessage.error('请求资源不存在')
+          break
+        case 422:
+          ElMessage.error(detail || '参数验证失败')
           break
         case 500:
           ElMessage.error('服务器错误')

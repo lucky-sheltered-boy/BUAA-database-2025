@@ -243,6 +243,31 @@ onMounted(() => {
   padding: 20px 0 0 0;
 }
 
+/* 修复课程卡片样式 */
+.course-card :deep(.el-card__body) {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.course-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.course-body {
+  padding: 12px 16px;
+  flex: 1;
+}
+
+.course-footer {
+  padding: 12px 16px 16px;
+  border-top: 1px solid #ebeef5;
+  text-align: right;
+  margin-top: auto;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -382,10 +407,7 @@ onMounted(() => {
 }
 
 .course-footer {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f2f5;
-  text-align: right;
+  /* padding 已在上面定义 */
 }
 
 /* 课表视图样式 */

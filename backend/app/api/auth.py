@@ -82,7 +82,7 @@ async def login(request: LoginRequest):
             user = cursor.fetchone()
             
             if not user:
-                raise AuthenticationError("用户名或密码错误")
+                raise AuthenticationError("用户名不存在")
             
             # 验证密码
             # 兼容两种密码格式：
@@ -105,7 +105,7 @@ async def login(request: LoginRequest):
                     password_valid = True
             
             if not password_valid:
-                raise AuthenticationError("用户名或密码错误")
+                raise AuthenticationError("密码错误")
             
             # 生成 Token
             token_data = {

@@ -49,7 +49,7 @@
         
         <el-table-column label="学期" width="150" align="center">
           <template #default="{ row }">
-            <el-tag effect="plain">{{ getSemesterName(row.semester_id) }}</el-tag>
+            <el-tag effect="plain">{{ row.semester_name }}</el-tag>
           </template>
         </el-table-column>
         
@@ -115,7 +115,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑开课实例' : '创建开课实例'"
-      width="600px"
+      width="800px"
       :close-on-click-modal="false"
       destroy-on-close
       class="custom-dialog"
@@ -178,18 +178,21 @@
           </el-col>
         </el-row>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="教学楼" prop="building">
-              <el-input v-model="form.building" placeholder="例如：一号楼" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="教室号" prop="room_number">
-              <el-input v-model="form.room_number" placeholder="例如：101" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="教室" prop="classroom_id">
+          <el-select 
+            v-model="form.classroom_id" 
+            placeholder="选择教室" 
+            filterable
+            style="width: 100%"
+          >
+            <el-option 
+              v-for="room in classrooms" 
+              :key="room.classroom_id" 
+              :label="`${room.building} ${room.room_number} (容量: ${room.capacity})`" 
+              :value="room.classroom_id" 
+            />
+          </el-select>
+        </el-form-item>
 
         <el-form-item label="授课教师" prop="teacher_ids">
           <el-select 
@@ -201,9 +204,9 @@
           >
             <el-option 
               v-for="teacher in teachers" 
-              :key="teacher.teacher_id" 
-              :label="`${teacher.name} (${teacher.teacher_id})`" 
-              :value="teacher.teacher_id" 
+              :key="teacher.user_id" 
+              :label="`${teacher.name} (${teacher.student_id})`" 
+              :value="teacher.user_id" 
             />
           </el-select>
         </el-form-item>
@@ -273,6 +276,7 @@ const instances = ref([])
 const courses = ref([])
 const semesters = ref([])
 const teachers = ref([])
+const classrooms = ref([])
 
 const searchForm = reactive({
   semester_id: '',
@@ -283,10 +287,9 @@ const form = reactive({
   instance_id: null,
   course_id: '',
   semester_id: '',
+  classroom_id: '',
   quota_inner: 0,
   quota_outer: 0,
-  building: '',
-  room_number: '',
   teacher_ids: [],
   time_slots: [{ day_of_week: '', period: '' }]
 })
@@ -294,10 +297,9 @@ const form = reactive({
 const rules = {
   course_id: [{ required: true, message: '请选择课程', trigger: 'change' }],
   semester_id: [{ required: true, message: '请选择学期', trigger: 'change' }],
+  classroom_id: [{ required: true, message: '请选择教室', trigger: 'change' }],
   quota_inner: [{ required: true, message: '请输入本院名额', trigger: 'blur' }],
   quota_outer: [{ required: true, message: '请输入外院名额', trigger: 'blur' }],
-  building: [{ required: true, message: '请输入教学楼', trigger: 'blur' }],
-  room_number: [{ required: true, message: '请输入教室号', trigger: 'blur' }],
   teacher_ids: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
 }
 
@@ -305,16 +307,23 @@ const rules = {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [instancesRes, coursesRes, semestersRes, teachersRes] = await Promise.all([
-      request.get('/admin/instances', { params: searchForm }),
+    // 过滤掉空值参数
+    const params = {}
+    if (searchForm.semester_id) params.semester_id = searchForm.semester_id
+    if (searchForm.course_name) params.course_name = searchForm.course_name
+
+    const [instancesRes, coursesRes, semestersRes, teachersRes, classroomsRes] = await Promise.all([
+      request.get('/admin/instances', { params }),
       request.get('/admin/courses'),
       request.get('/admin/semesters'),
-      request.get('/admin/users', { params: { role: '教师' } })
+      request.get('/admin/users', { params: { role: '教师' } }),
+      request.get('/admin/classrooms')
     ])
     instances.value = instancesRes
     courses.value = coursesRes
     semesters.value = semestersRes
     teachers.value = teachersRes
+    classrooms.value = classroomsRes
   } catch (error) {
     console.error('获取数据失败:', error)
     ElMessage.error('获取数据失败')
@@ -339,10 +348,9 @@ const handleAdd = () => {
   form.instance_id = null
   form.course_id = ''
   form.semester_id = ''
+  form.classroom_id = ''
   form.quota_inner = 0
   form.quota_outer = 0
-  form.building = ''
-  form.room_number = ''
   form.teacher_ids = []
   form.time_slots = [{ day_of_week: '', period: '' }]
   dialogVisible.value = true
@@ -355,6 +363,8 @@ const handleEdit = (row) => {
   form.teacher_ids = row.teachers.map(t => t.teacher_id)
   // 确保 time_slots 格式正确
   form.time_slots = row.time_slots.length > 0 ? [...row.time_slots] : [{ day_of_week: '', period: '' }]
+  // 查找教室ID (这里可能需要后端返回classroom_id，目前只能尝试匹配)
+  // 暂时无法回显教室，因为列表接口没返回classroom_id
   dialogVisible.value = true
 }
 
@@ -401,17 +411,29 @@ const handleSubmit = async () => {
 
       submitting.value = true
       try {
+        // 构造符合后端要求的数据格式
         const data = {
-          ...form,
-          teacher_ids: form.teacher_ids,
-          time_slots: form.time_slots
+          course_id: form.course_id,
+          semester_id: form.semester_id,
+          classroom_id: form.classroom_id,
+          quota_inner: form.quota_inner,
+          quota_outer: form.quota_outer,
+          teachers: form.teacher_ids,
+          time_slots: form.time_slots.map(slot => ({
+            weekday: slot.day_of_week,
+            time_slot: slot.period,
+            start_week: 1, // 默认值
+            end_week: 16,  // 默认值
+            week_type: '全部', // 默认值
+            teacher_id: form.teacher_ids[0] // 默认使用第一个教师
+          }))
         }
         
         if (isEdit.value) {
-          await request.put(`/api/admin/instances/${form.instance_id}`, data)
+          await request.put(`/admin/instances/${form.instance_id}`, data)
           ElMessage.success('更新成功')
         } else {
-          await request.post('/api/admin/instances', data)
+          await request.post('/admin/instances', data)
           ElMessage.success('创建成功')
         }
         dialogVisible.value = false

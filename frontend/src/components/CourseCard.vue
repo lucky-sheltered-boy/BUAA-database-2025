@@ -106,6 +106,7 @@ const tagType = computed(() => {
 
 .course-body {
   flex: 1;
+  padding: 12px;
 }
 
 .info-grid {

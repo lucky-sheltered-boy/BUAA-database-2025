@@ -26,6 +26,15 @@ class AddUserRequest(BaseModel):
         }
 
 
+class UpdateUserRequest(BaseModel):
+    """更新用户请求"""
+    
+    student_id: str = Field(..., description="学号/工号", min_length=1, max_length=20)
+    name: str = Field(..., description="姓名", min_length=1, max_length=50)
+    role: str = Field(..., description="角色", pattern="^(学生|教师|教务)$")
+    department_id: int = Field(..., description="院系ID", gt=0)
+
+
 class AddCourseRequest(BaseModel):
     """添加课程请求"""
     
@@ -65,6 +74,7 @@ class UserResponse(BaseModel):
     student_id: str
     name: str
     role: str
+    department_id: int
     department_name: str
 
 
@@ -178,7 +188,8 @@ class CourseInstanceResponse(BaseModel):
     quota_outer: int
     enrolled_inner: int
     enrolled_outer: int
-    teachers: str  # 教师名单，逗号分隔
+    teachers: List[dict]  # 教师列表 [{"name": "张三", "teacher_id": 1}, ...]
+    time_slots: List[dict] = [] # 上课时间列表
     
     class Config:
         json_schema_extra = {
@@ -193,6 +204,7 @@ class CourseInstanceResponse(BaseModel):
                 "quota_outer": 20,
                 "enrolled_inner": 30,
                 "enrolled_outer": 10,
-                "teachers": "张三, 李四"
+                "teachers": [{"name": "张三", "teacher_id": 1}],
+                "time_slots": []
             }
         }

@@ -129,8 +129,8 @@
             show-password
           />
         </el-form-item>
-        <el-form-item label="姓名" prop="full_name">
-          <el-input v-model="registerForm.full_name" placeholder="请输入真实姓名" />
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="registerForm.name" placeholder="请输入真实姓名" />
         </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="registerForm.role" placeholder="请选择角色" style="width: 100%">
@@ -185,7 +185,7 @@ const registerForm = reactive({
   username: '',
   password: '',
   confirmPassword: '',
-  full_name: '',
+  name: '',
   role: '学生',
   department_id: ''
 })
@@ -201,10 +201,19 @@ const validatePass2 = (rule, value, callback) => {
 }
 
 const registerRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 1, max: 20, message: '长度在 1 到 20 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 50, message: '长度在 6 到 50 个字符', trigger: 'blur' }
+  ],
   confirmPassword: [{ validator: validatePass2, trigger: 'blur' }],
-  full_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  name: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
+  ],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
   department_id: [{ required: true, message: '请选择院系', trigger: 'change' }]
 }
@@ -215,6 +224,7 @@ const fetchDepartments = async () => {
     departments.value = Array.isArray(res) ? res : []
   } catch (error) {
     console.error('获取院系失败', error)
+    ElMessage.error('获取院系列表失败，请重试')
   }
 }
 
@@ -225,11 +235,18 @@ const handleRegister = async () => {
       registerLoading.value = true
       try {
         const { confirmPassword, ...data } = registerForm
+        // 确保 department_id 是数字
+        if (data.department_id) {
+          data.department_id = Number(data.department_id)
+        }
+        console.log('Register data:', data)
         await register(data)
         ElMessage.success('注册成功，请登录')
         showRegisterDialog.value = false
       } catch (error) {
-        // Error handled by interceptor
+        if (!error.isHandled) {
+          ElMessage.error(error.message || '注册失败')
+        }
       } finally {
         registerLoading.value = false
       }
@@ -261,7 +278,8 @@ const rules = {
     { required: true, message: '请输入学号/工号', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 50, message: '长度在 6 到 50 个字符', trigger: 'blur' }
   ]
 }
 
@@ -283,7 +301,9 @@ const handleLogin = async () => {
         }
         router.push(roleRoutes[userInfo.role] || '/')
       } catch (error) {
-        ElMessage.error(error.response?.data?.message || '登录失败')
+        if (!error.isHandled) {
+          ElMessage.error(error.message || '登录失败')
+        }
       } finally {
         loading.value = false
       }

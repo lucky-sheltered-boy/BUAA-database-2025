@@ -78,6 +78,20 @@
               <el-tag type="info" effect="plain" size="small">{{ row.department_name }}</el-tag>
             </template>
           </el-table-column>
+
+          <el-table-column label="操作" width="100" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button 
+                type="danger" 
+                link 
+                size="small" 
+                icon="Delete" 
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
     </el-card>
@@ -135,9 +149,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus, Refresh, Delete } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -178,8 +192,12 @@ const fetchDepartments = async () => {
 const fetchCourses = async () => {
   loading.value = true
   try {
+    // 过滤掉空值参数
+    const params = {}
+    if (filters.department_id) params.department_id = filters.department_id
+
     const res = await request.get('/admin/courses', {
-      params: filters
+      params
     })
     if (res) {
       courses.value = res
@@ -197,6 +215,26 @@ const showAddDialog = () => {
   form.credit = 2
   form.department_id = ''
   dialogVisible.value = true
+}
+
+const handleDelete = (row) => {
+  ElMessageBox.confirm(
+    `确定要删除课程 "${row.course_name}" (${row.course_id}) 吗？此操作不可恢复。`,
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await request.delete(`/admin/courses/${row.course_id}`)
+      ElMessage.success('删除成功')
+      fetchCourses()
+    } catch (error) {
+      // 错误信息已由拦截器处理，这里不需要额外处理
+    }
+  })
 }
 
 const handleSubmit = async () => {

@@ -177,7 +177,12 @@ const fetchDepartments = async () => {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const res = await request.get('/admin/users', { params: filters })
+    // 过滤掉空值参数
+    const params = {}
+    if (filters.role) params.role = filters.role
+    if (filters.department_id) params.department_id = filters.department_id
+    
+    const res = await request.get('/admin/users', { params })
     users.value = res
   } catch (error) {
     console.error('获取用户失败:', error)

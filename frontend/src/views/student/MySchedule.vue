@@ -305,6 +305,32 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+.schedule-card :deep(.el-card__body) {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.schedule-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.schedule-body {
+  padding: 12px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.action-area {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #f0f2f5;
+  text-align: right;
+}
+
 .header-main {
   display: flex;
   justify-content: space-between;
