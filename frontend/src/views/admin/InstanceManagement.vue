@@ -212,39 +212,34 @@
         </el-form-item>
 
         <el-form-item label="上课时间" required>
-          <div v-for="(slot, index) in form.time_slots" :key="index" class="time-slot-item">
-            <el-row :gutter="10">
-              <el-col :span="10">
-                <el-select v-model="slot.day_of_week" placeholder="星期" style="width: 100%">
-                  <el-option label="星期一" :value="1" />
-                  <el-option label="星期二" :value="2" />
-                  <el-option label="星期三" :value="3" />
-                  <el-option label="星期四" :value="4" />
-                  <el-option label="星期五" :value="5" />
-                  <el-option label="星期六" :value="6" />
-                  <el-option label="星期日" :value="7" />
-                </el-select>
-              </el-col>
-              <el-col :span="10">
-                <el-select v-model="slot.period" placeholder="节次" style="width: 100%">
-                  <el-option v-for="i in 14" :key="i" :label="`第 ${i} 节`" :value="i" />
-                </el-select>
-              </el-col>
-              <el-col :span="4">
-                <el-button 
-                  type="danger" 
-                  :icon="Delete" 
-                  circle 
-                  size="small" 
-                  @click="removeTimeSlot(index)" 
-                  v-if="form.time_slots.length > 1"
-                />
-              </el-col>
-            </el-row>
+          <div class="time-selection-container">
+             <div class="time-grid-header">
+               <div class="grid-cell-header"></div>
+               <div v-for="day in weekDays" :key="day" class="grid-cell-header">{{ day }}</div>
+             </div>
+             <div class="time-grid-body">
+               <div v-for="period in periods" :key="period.id" class="grid-row">
+                 <div class="grid-cell-label">{{ period.label }}</div>
+                 <div v-for="(day, dayIdx) in weekDays" :key="dayIdx" 
+                      class="grid-cell"
+                      :class="{
+                        'is-selected': isSelected(dayIdx + 1, period.id),
+                        'is-occupied': isOccupied(dayIdx + 1, period.id),
+                        'is-disabled': !form.classroom_id || !form.semester_id
+                      }"
+                      @click="toggleTimeSlot(dayIdx + 1, period.id)"
+                 >
+                   <span v-if="isOccupied(dayIdx + 1, period.id)" class="occupied-text">已占</span>
+                   <el-icon v-if="isSelected(dayIdx + 1, period.id)"><Check /></el-icon>
+                 </div>
+               </div>
+             </div>
           </div>
-          <el-button type="primary" link :icon="Plus" @click="addTimeSlot" class="mt-2">
-            添加时间段
-          </el-button>
+          <div class="time-legend">
+             <span class="legend-item"><span class="color-box occupied"></span> 已占用</span>
+             <span class="legend-item"><span class="color-box selected"></span> 已选择</span>
+             <span class="legend-item"><span class="color-box available"></span> 可选</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -260,9 +255,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Search, Refresh, Calendar, Location, Timer } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Search, Refresh, Calendar, Location, Timer, Check } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 // 状态定义
@@ -277,6 +272,17 @@ const courses = ref([])
 const semesters = ref([])
 const teachers = ref([])
 const classrooms = ref([])
+const classroomOccupiedSlots = ref([])
+const teacherOccupiedSlots = ref([])
+
+const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+const periods = [
+  { id: 1, label: '第1-2节', startTime: '08:00:00' },
+  { id: 2, label: '第3-4节', startTime: '10:00:00' },
+  { id: 3, label: '第5-6节', startTime: '14:00:00' },
+  { id: 4, label: '第7-8节', startTime: '16:00:00' },
+  { id: 5, label: '第9-10节', startTime: '19:00:00' }
+]
 
 const searchForm = reactive({
   semester_id: '',
@@ -291,7 +297,7 @@ const form = reactive({
   quota_inner: 0,
   quota_outer: 0,
   teacher_ids: [],
-  time_slots: [{ day_of_week: '', period: '' }]
+  time_slots: []
 })
 
 const rules = {
@@ -301,6 +307,105 @@ const rules = {
   quota_inner: [{ required: true, message: '请输入本院名额', trigger: 'blur' }],
   quota_outer: [{ required: true, message: '请输入外院名额', trigger: 'blur' }],
   teacher_ids: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
+}
+
+// 时间段选择相关逻辑
+const fetchClassroomOccupiedSlots = async () => {
+  if (!form.classroom_id || !form.semester_id) {
+    classroomOccupiedSlots.value = []
+    return
+  }
+  
+  try {
+    const res = await request.get(`/admin/classrooms/${form.classroom_id}/occupied-slots`, {
+      params: { semester_id: form.semester_id }
+    })
+    classroomOccupiedSlots.value = res || []
+  } catch (error) {
+    console.error('获取教室占用时间段失败', error)
+    classroomOccupiedSlots.value = []
+  }
+}
+
+const fetchTeacherOccupiedSlots = async () => {
+  if (!form.teacher_ids || form.teacher_ids.length === 0 || !form.semester_id) {
+    teacherOccupiedSlots.value = []
+    return
+  }
+  
+  try {
+    const promises = form.teacher_ids.map(tid => 
+      request.get(`/admin/teachers/${tid}/occupied-slots`, {
+        params: { semester_id: form.semester_id }
+      })
+    )
+    const results = await Promise.all(promises)
+    teacherOccupiedSlots.value = results.flat()
+  } catch (error) {
+    console.error('获取教师占用时间段失败', error)
+    teacherOccupiedSlots.value = []
+  }
+}
+
+watch(() => [form.classroom_id, form.semester_id], () => {
+  fetchClassroomOccupiedSlots()
+})
+
+watch(() => [form.teacher_ids, form.semester_id], () => {
+  fetchTeacherOccupiedSlots()
+}, { deep: true })
+
+const isOccupied = (dayIdx, periodId) => {
+  const period = periods.find(p => p.id === periodId)
+  if (!period) return false
+  
+  const dbWeekDays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+  const targetDayStr = dbWeekDays[dayIdx - 1]
+  
+  const checkSlot = (slot) => {
+    // 排除当前正在编辑的实例
+    if (isEdit.value && slot.instance_id === form.instance_id) {
+      return false
+    }
+    return slot.day_of_week === targetDayStr && slot.start_time === period.startTime
+  }
+
+  return classroomOccupiedSlots.value.some(checkSlot) || teacherOccupiedSlots.value.some(checkSlot)
+}
+
+const isSelected = (dayIdx, periodId) => {
+  return form.time_slots.some(slot => slot.day_of_week === dayIdx && slot.period === periodId)
+}
+
+const toggleTimeSlot = (dayIdx, periodId) => {
+  if (!form.classroom_id || !form.semester_id) {
+    ElMessage.warning('请先选择学期和教室')
+    return
+  }
+  
+  // 检查是否被其他课程占用
+  // 这里需要区分：是被其他课程占用，还是被当前课程（编辑时）占用
+  // 由于isOccupied目前没区分，所以如果显示已占，就不能点。
+  // 这会导致编辑时无法取消选择（如果它被标记为已占）。
+  // 必须解决这个问题。
+  
+  if (isOccupied(dayIdx, periodId)) {
+    // 如果是已选状态，允许取消（说明是当前课程占用的，或者用户刚选的）
+    // 但isOccupied返回true意味着数据库里有记录。
+    // 如果是当前正在编辑的课程，数据库里肯定有记录。
+    // 所以必须在isOccupied里排除当前课程。
+    
+    // 暂时先提示
+    ElMessage.warning('该时间段已被占用')
+    return
+  }
+  
+  const index = form.time_slots.findIndex(slot => slot.day_of_week === dayIdx && slot.period === periodId)
+  if (index > -1) {
+    form.time_slots.splice(index, 1)
+  } else {
+    form.time_slots.push({ day_of_week: dayIdx, period: periodId })
+  }
 }
 
 // 获取数据
@@ -352,7 +457,7 @@ const handleAdd = () => {
   form.quota_inner = 0
   form.quota_outer = 0
   form.teacher_ids = []
-  form.time_slots = [{ day_of_week: '', period: '' }]
+  form.time_slots = []
   dialogVisible.value = true
 }
 
@@ -362,7 +467,7 @@ const handleEdit = (row) => {
   // 确保 teacher_ids 是数组
   form.teacher_ids = row.teachers.map(t => t.teacher_id)
   // 确保 time_slots 格式正确
-  form.time_slots = row.time_slots.length > 0 ? [...row.time_slots] : [{ day_of_week: '', period: '' }]
+  form.time_slots = row.time_slots.length > 0 ? [...row.time_slots] : []
   // 查找教室ID (这里可能需要后端返回classroom_id，目前只能尝试匹配)
   // 暂时无法回显教室，因为列表接口没返回classroom_id
   dialogVisible.value = true
@@ -402,6 +507,10 @@ const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       // 验证时间段
+      if (form.time_slots.length === 0) {
+        ElMessage.warning('请至少选择一个上课时间段')
+        return
+      }
       for (const slot of form.time_slots) {
         if (!slot.day_of_week || !slot.period) {
           ElMessage.warning('请完善上课时间信息')
@@ -500,6 +609,105 @@ onMounted(() => {
 .data-card {
   border: none;
 }
+
+.time-selection-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 10px;
+  background: #fff;
+  width: 100%;
+}
+.time-grid-header {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  border-bottom: 1px solid #ebeef5;
+  background: #f5f7fa;
+}
+.grid-cell-header {
+  padding: 8px;
+  text-align: center;
+  font-weight: bold;
+  color: #606266;
+  border-right: 1px solid #ebeef5;
+}
+.grid-cell-header:last-child {
+  border-right: none;
+}
+.time-grid-body {
+  display: flex;
+  flex-direction: column;
+}
+.grid-row {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  border-bottom: 1px solid #ebeef5;
+}
+.grid-row:last-child {
+  border-bottom: none;
+}
+.grid-cell-label {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafc;
+  color: #909399;
+  font-size: 12px;
+  border-right: 1px solid #ebeef5;
+}
+.grid-cell {
+  height: 40px;
+  border-right: 1px solid #ebeef5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+.grid-cell:last-child {
+  border-right: none;
+}
+.grid-cell:hover:not(.is-disabled):not(.is-occupied) {
+  background-color: #f0f9eb;
+}
+.grid-cell.is-selected {
+  background-color: #67c23a;
+  color: white;
+}
+.grid-cell.is-occupied {
+  background-color: #f56c6c;
+  color: white;
+  cursor: not-allowed;
+}
+.grid-cell.is-disabled {
+  background-color: #f5f7fa;
+  cursor: not-allowed;
+}
+.occupied-text {
+  font-size: 12px;
+}
+.time-legend {
+  margin-top: 10px;
+  display: flex;
+  gap: 20px;
+  justify-content: flex-end;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #606266;
+}
+.color-box {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+.color-box.occupied { background: #f56c6c; }
+.color-box.selected { background: #67c23a; }
+.color-box.available { background: #fff; border: 1px solid #dcdfe6; }
 
 .course-name {
   font-weight: bold;

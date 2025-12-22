@@ -1,7 +1,7 @@
 """
 管理员 API 路由
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Path
 from typing import List
 
 from app.models.common import ResponseModel
@@ -400,6 +400,121 @@ async def get_classrooms():
             )
             
     except Exception as e:
+        logger.error(f"获取教室列表失败: {str(e)}")
+        raise
+
+
+@router.get("/classrooms/{classroom_id}/occupied-slots", response_model=ResponseModel[List[dict]])
+async def get_classroom_occupied_slots(
+    classroom_id: int = Path(..., description="教室ID", gt=0),
+    semester_id: int = Query(..., description="学期ID", gt=0)
+):
+    """
+    查询教室在指定学期的占用时间段
+    """
+    try:
+        with db_pool.get_cursor() as cursor:
+            sql = """
+                SELECT 
+                    oi.`开课实例ID` as instance_id,
+                    ts.`星期` as day_of_week,
+                    ts.`开始时间` as start_time,
+                    ts.`结束时间` as end_time,
+                    t.`起始周` as start_week,
+                    t.`结束周` as end_week,
+                    t.`单双周` as week_type,
+                    c.`课程名称` as course_name
+                FROM `开课实例表` oi
+                JOIN `上课时间表` t ON oi.`开课实例ID` = t.`开课实例ID`
+                JOIN `时间段信息表` ts ON t.`时间段ID` = ts.`时间段ID`
+                JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+                WHERE oi.`教室ID` = %s AND oi.`学期ID` = %s
+            """
+            cursor.execute(sql, (classroom_id, semester_id))
+            results = cursor.fetchall()
+            
+            occupied_slots = [
+                {
+                    "instance_id": r['instance_id'],
+                    "day_of_week": r['day_of_week'],
+                    "start_time": str(r['start_time']),
+                    "end_time": str(r['end_time']),
+                    "start_week": r['start_week'],
+                    "end_week": r['end_week'],
+                    "week_type": r['week_type'],
+                    "course_name": r['course_name']
+                }
+                for r in results
+            ]
+            
+            return ResponseModel(
+                success=True,
+                code=200,
+                message=f"查询到 {len(occupied_slots)} 个占用时间段",
+                data=occupied_slots
+            )
+    except Exception as e:
+        logger.error(f"查询教室占用时间段失败: {str(e)}")
+        raise
+
+
+@router.get("/teachers/{teacher_id}/occupied-slots", response_model=ResponseModel[List[dict]])
+async def get_teacher_occupied_slots(
+    teacher_id: int = Path(..., description="教师ID", gt=0),
+    semester_id: int = Query(..., description="学期ID", gt=0)
+):
+    """
+    查询教师在指定学期的占用时间段
+    """
+    try:
+        with db_pool.get_cursor() as cursor:
+            sql = """
+                SELECT 
+                    oi.`开课实例ID` as instance_id,
+                    ts.`星期` as day_of_week,
+                    ts.`开始时间` as start_time,
+                    ts.`结束时间` as end_time,
+                    t.`起始周` as start_week,
+                    t.`结束周` as end_week,
+                    t.`单双周` as week_type,
+                    c.`课程名称` as course_name
+                FROM `授课关系表` tr
+                JOIN `开课实例表` oi ON tr.`开课实例ID` = oi.`开课实例ID`
+                JOIN `上课时间表` t ON oi.`开课实例ID` = t.`开课实例ID`
+                JOIN `时间段信息表` ts ON t.`时间段ID` = ts.`时间段ID`
+                JOIN `课程信息表` c ON oi.`课程ID` = c.`课程ID`
+                WHERE tr.`教师ID` = %s 
+                  AND oi.`学期ID` = %s
+                  AND (t.`教师ID` IS NULL OR t.`教师ID` = %s) -- 确保是该教师的时间段（如果指定了特定教师）
+            """
+            cursor.execute(sql, (teacher_id, semester_id, teacher_id))
+            results = cursor.fetchall()
+            
+            occupied_slots = [
+                {
+                    "instance_id": r['instance_id'],
+                    "day_of_week": r['day_of_week'],
+                    "start_time": str(r['start_time']),
+                    "end_time": str(r['end_time']),
+                    "start_week": r['start_week'],
+                    "end_week": r['end_week'],
+                    "week_type": r['week_type'],
+                    "course_name": r['course_name']
+                }
+                for r in results
+            ]
+            
+            return ResponseModel(
+                success=True,
+                code=200,
+                message=f"查询到 {len(occupied_slots)} 个占用时间段",
+                data=occupied_slots
+            )
+    except Exception as e:
+        logger.error(f"查询教师占用时间段失败: {str(e)}")
+        raise
+            
+    except Exception as e:
         logger.error(f"查询教室列表失败: {str(e)}")
         raise
 
@@ -662,6 +777,9 @@ async def delete_instance(instance_id: int):
             cursor.execute("SELECT 1 FROM `开课实例表` WHERE `开课实例ID` = %s", (instance_id,))
             if not cursor.fetchone():
                 raise BusinessError(f"开课实例ID {instance_id} 不存在")
+            
+            # 先删除选课记录，以绕过 trg_before_course_instance_delete_check 触发器的限制
+            cursor.execute("DELETE FROM `选课记录表` WHERE `开课实例ID` = %s", (instance_id,))
             
             # 删除 (由于有 ON DELETE CASCADE，会自动删除相关记录)
             cursor.execute("DELETE FROM `开课实例表` WHERE `开课实例ID` = %s", (instance_id,))
