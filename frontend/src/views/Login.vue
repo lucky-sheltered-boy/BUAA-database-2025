@@ -5,7 +5,7 @@
       <div class="login-visual">
         <div class="brand-content">
           <div class="logo-circle">
-            <el-icon :size="40" color="#fff"><School /></el-icon>
+            <el-icon :size="40"><School /></el-icon>
           </div>
           <h1>高校课程选课管理系统</h1>
           <p class="subtitle">Course Selection Management System</p>
@@ -319,110 +319,40 @@ const quickLogin = (username, password) => {
 </script>
 
 <style scoped>
-/* Cyberpunk / Industrial Tech Theme */
+/* Clean / Modern University Theme */
 .login-wrapper {
   height: 100vh;
   width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #050505;
-  background-image: 
-    linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 30px 30px;
+  background-color: #f0f2f5;
+  background-image: url('../assets/images/bg-pattern.png'); /* Optional: subtle pattern if available, otherwise just color */
   position: relative;
   overflow: hidden;
-}
-
-/* Animated Background Glow */
-.login-wrapper::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(0, 243, 255, 0.1) 0%, transparent 50%);
-  animation: rotateBg 20s linear infinite;
-  z-index: 0;
-}
-
-@keyframes rotateBg {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .login-container {
-  width: 1100px;
-  height: 680px;
-  background: rgba(10, 10, 15, 0.85);
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 4px;
-  box-shadow: 
-    0 0 20px rgba(0, 255, 255, 0.1),
-    0 0 0 1px rgba(0, 255, 255, 0.1) inset;
+  width: 1000px;
+  height: 600px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
   display: flex;
   overflow: hidden;
-  z-index: 1;
-  backdrop-filter: blur(10px);
   position: relative;
-}
-
-/* Decorative Corner Accents */
-.login-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background: 
-    linear-gradient(to right, #00f3ff 2px, transparent 2px) 0 0,
-    linear-gradient(to bottom, #00f3ff 2px, transparent 2px) 0 0,
-    linear-gradient(to left, #00f3ff 2px, transparent 2px) 100% 0,
-    linear-gradient(to bottom, #00f3ff 2px, transparent 2px) 100% 0,
-    linear-gradient(to right, #00f3ff 2px, transparent 2px) 0 100%,
-    linear-gradient(to top, #00f3ff 2px, transparent 2px) 0 100%,
-    linear-gradient(to left, #00f3ff 2px, transparent 2px) 100% 100%,
-    linear-gradient(to top, #00f3ff 2px, transparent 2px) 100% 100%;
-  background-repeat: no-repeat;
-  background-size: 20px 20px;
-  z-index: 2;
 }
 
 /* Left Side */
 .login-visual {
-  flex: 1.2;
-  background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%), url('../assets/images/VCG211144730484.webp') center/cover no-repeat;
+  flex: 1;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.9) 0%, rgba(54, 207, 201, 0.9) 100%), url('../assets/images/VCG211144730484.webp') center/cover no-repeat;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 60px;
   color: #fff;
-  overflow: hidden;
-  border-right: 1px solid rgba(0, 255, 255, 0.2);
-}
-
-/* Scanning Line Effect */
-.login-visual::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 50%, rgba(0, 255, 255, 0.05) 51%, transparent 52%);
-  background-size: 100% 8px;
-  animation: scanline 4s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes scanline {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100%; }
 }
 
 .brand-content {
@@ -431,72 +361,51 @@ const quickLogin = (username, password) => {
 }
 
 .logo-circle {
-  width: 100px;
-  height: 100px;
-  background: rgba(0, 243, 255, 0.1);
-  border: 2px solid #00f3ff;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 40px;
-  box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
-  animation: pulse 3s infinite ease-in-out;
+  margin-bottom: 30px;
+  backdrop-filter: blur(10px);
 }
 
-@keyframes pulse {
-  0% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(0, 243, 255, 0.6); }
-  100% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.3); }
+.logo-circle :deep(.el-icon) {
+  color: #fff;
 }
 
 .login-visual h1 {
-  font-size: 42px;
-  font-weight: 800;
-  margin: 0 0 12px;
-  line-height: 1.2;
-  letter-spacing: 1px;
-  background: linear-gradient(90deg, #fff, #00f3ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-transform: uppercase;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  line-height: 1.4;
+  color: #fff;
 }
 
 .subtitle {
-  font-size: 16px;
-  color: #00f3ff;
-  margin: 0 0 60px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 40px;
   font-weight: 400;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  opacity: 0.8;
 }
 
 .feature-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 16px;
+  gap: 12px;
+  font-size: 15px;
   font-weight: 500;
-  color: #e0e0e0;
-  background: rgba(0, 243, 255, 0.05);
-  padding: 16px 24px;
-  border-left: 4px solid #00f3ff;
-  width: fit-content;
-  transition: all 0.3s ease;
-  clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
-}
-
-.feature-item:hover {
-  transform: translateX(10px);
-  background: rgba(0, 243, 255, 0.15);
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* Right Side */
@@ -506,85 +415,80 @@ const quickLogin = (username, password) => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: rgba(15, 15, 20, 0.95);
-  position: relative;
+  background: #fff;
 }
 
 .form-header {
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .form-header h2 {
-  font-size: 32px;
-  color: #fff;
-  margin: 0 0 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-size: 28px;
+  color: #303133;
+  margin: 0 0 10px;
+  font-weight: 600;
 }
 
 .form-header p {
-  color: #8c8c8c;
+  color: #909399;
   margin: 0;
   font-size: 14px;
 }
 
 .login-form {
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
-/* Input Styling */
+/* Input Styling - Revert to standard clean look */
 :deep(.el-input__wrapper) {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0 !important;
+  background-color: #fff !important;
+  box-shadow: 0 0 0 1px #dcdfe6 inset !important;
+  border-radius: 4px !important;
   padding: 8px 15px !important;
   transition: all 0.3s;
 }
 
-:deep(.el-input__wrapper:hover),
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc inset !important;
+}
+
 :deep(.el-input__wrapper.is-focus) {
-  border-color: #00f3ff !important;
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2) !important;
-  background-color: rgba(0, 243, 255, 0.05) !important;
+  box-shadow: 0 0 0 1px #409eff inset !important;
 }
 
 :deep(.el-input__inner) {
-  color: #fff !important;
+  color: #606266 !important;
   height: 40px;
 }
 
 .submit-btn {
   width: 100%;
-  height: 50px;
-  font-size: 18px;
-  font-weight: 600;
-  border-radius: 0;
-  margin-top: 20px;
-  background: linear-gradient(90deg, #00f3ff, #0066ff);
+  height: 44px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 4px;
+  margin-top: 10px;
+  background: #409eff;
   border: none;
-  color: #000;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  position: relative;
-  overflow: hidden;
+  color: #fff;
+  letter-spacing: 1px;
   transition: all 0.3s;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 
 .submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
-  filter: brightness(1.1);
+  background: #66b1ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 
 .register-link {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .register-link :deep(.el-button) {
-  color: #00f3ff;
+  color: #409eff;
+  font-weight: normal;
 }
 
 /* Test Accounts */
@@ -595,11 +499,9 @@ const quickLogin = (username, password) => {
 .divider {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
-  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 20px;
+  color: #909399;
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 .divider::before,
@@ -607,17 +509,17 @@ const quickLogin = (username, password) => {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #ebeef5;
 }
 
 .divider span {
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .accounts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .account-btn {
@@ -625,44 +527,28 @@ const quickLogin = (username, password) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 12px;
+  padding: 12px;
   cursor: pointer;
   transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.03);
-  color: #8c8c8c;
-  gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  position: relative;
-}
-
-.account-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 0;
-  background: #00f3ff;
-  transition: height 0.3s;
+  background: #f5f7fa;
+  color: #606266;
+  gap: 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
 }
 
 .account-btn:hover {
-  background: rgba(0, 243, 255, 0.05);
-  color: #fff;
-  border-color: rgba(0, 243, 255, 0.3);
+  background: #ecf5ff;
+  color: #409eff;
+  border-color: #c6e2ff;
 }
 
-.account-btn:hover::before {
-  height: 100%;
-}
-
-.account-btn.student:hover { color: #00f3ff; }
-.account-btn.teacher:hover { color: #52c41a; }
-.account-btn.admin:hover { color: #faad14; }
+.account-btn.student:hover { color: #409eff; background: #ecf5ff; border-color: #c6e2ff; }
+.account-btn.teacher:hover { color: #67c23a; background: #f0f9eb; border-color: #d1edc4; }
+.account-btn.admin:hover { color: #e6a23c; background: #fdf6ec; border-color: #f5dab1; }
 
 .account-btn span {
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 1px;
 }
 </style>
