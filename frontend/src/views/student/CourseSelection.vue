@@ -236,8 +236,8 @@ const fetchCourses = async () => {
       room_number: c.room,
       quota: c.total_quota ?? 0,
       enrolled: (c.total_quota ?? 0) - (c.remaining_quota ?? 0),
-      time_slots: [],
-      teachers: []
+      time_slots: c.time_slots || [],
+      teachers: c.teachers || []
     }))
     
     // 同时获取已选课程以检测冲突
@@ -260,7 +260,13 @@ const formatTeachers = (teachers) => {
 
 const formatTimeSlot = (slot) => {
   const days = ['一', '二', '三', '四', '五', '六', '日']
-  return `周${days[slot.day_of_week - 1]} 第${slot.period}节`
+  const dayIndex = parseInt(slot.day_of_week) - 1
+  const dayName = days[dayIndex] || slot.day_of_week
+  
+  if (slot.start_time && slot.end_time) {
+    return `${dayName} ${slot.start_time}-${slot.end_time}`
+  }
+  return `${dayName} 第${slot.period}节`
 }
 
 const getQuotaClass = (course) => {

@@ -147,22 +147,44 @@ const fetchStats = async () => {
     })
     const list = Array.isArray(res) ? res : []
     
-    // 计算统计数据
-    stats.value.totalCourses = list.length
-    stats.value.totalStudents = list.reduce((sum, c) => sum + (c.enrolled_students || 0), 0)
+    // 1. 按开课实例去重 (因为一个实例可能有多个上课时间段，会返回多条记录)
+    const uniqueInstancesMap = new Map()
+    list.forEach(item => {
+      if (!uniqueInstancesMap.has(item.instance_id)) {
+        uniqueInstancesMap.set(item.instance_id, item)
+      }
+    })
+    const uniqueInstances = Array.from(uniqueInstancesMap.values())
+
+    // 2. 按课程ID去重统计课程数
+    const uniqueCourseIds = new Set(uniqueInstances.map(c => c.course_id))
+    stats.value.totalCourses = uniqueCourseIds.size
+
+    // 3. 统计学生总数 (累加所有去重后的实例的选课人数)
+    stats.value.totalStudents = uniqueInstances.reduce((sum, c) => sum + (c.enrolled_students || 0), 0)
     
-    const totalQuota = list.reduce((sum, c) => sum + (c.total_quota || 0), 0)
+    const totalQuota = uniqueInstances.reduce((sum, c) => sum + (c.total_quota || 0), 0)
     stats.value.avgEnrollment = totalQuota > 0 
       ? Math.round((stats.value.totalStudents / totalQuota) * 100) 
       : 0
 
-    // 课程列表数据
-    courseStats.value = list.map(c => ({
-      course_name: c.course_name,
-      course_id: c.course_id,
-      enrolled: c.enrolled_students || 0,
-      quota: c.total_quota || 0
-    }))
+    // 4. 课程列表数据 (按课程聚合)
+    const courseMap = new Map()
+    uniqueInstances.forEach(c => {
+      if (!courseMap.has(c.course_id)) {
+        courseMap.set(c.course_id, {
+          course_name: c.course_name,
+          course_id: c.course_id,
+          enrolled: 0,
+          quota: 0
+        })
+      }
+      const course = courseMap.get(c.course_id)
+      course.enrolled += (c.enrolled_students || 0)
+      course.quota += (c.total_quota || 0)
+    })
+    
+    courseStats.value = Array.from(courseMap.values())
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }

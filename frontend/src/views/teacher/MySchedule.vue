@@ -186,8 +186,23 @@ const formatTimeSlot = (slot) => {
   return `${dayText} ${slot.start_time}-${slot.end_time}`
 }
 
-const getCourseAt = () => {
-  return undefined
+const getCourseAt = (day, period) => {
+  // 映射节次到开始时间
+  let targetStartTime = ''
+  if (period === 1 || period === 2) targetStartTime = '08:00:00'
+  else if (period === 3 || period === 4) targetStartTime = '10:00:00'
+  else if (period === 5 || period === 6) targetStartTime = '14:00:00'
+  else if (period === 7 || period === 8) targetStartTime = '16:00:00'
+  else if (period === 9 || period === 10) targetStartTime = '19:00:00'
+  else return undefined
+
+  return scheduleData.value.find(item => {
+    let itemDayIndex = getWeekdayIndex(item.weekday)
+    if (itemDayIndex === 0) itemDayIndex = 7
+    
+    // 确保时间格式匹配 (后端返回的是 HH:MM:SS)
+    return itemDayIndex === day && item.start_time === targetStartTime
+  })
 }
 
 const getCourseStyle = (course) => {

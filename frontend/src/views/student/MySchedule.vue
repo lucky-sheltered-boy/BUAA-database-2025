@@ -97,7 +97,9 @@
                     :style="getCourseStyle(getCourseAt(day, period))"
                   >
                     <div class="course-name-mini">{{ getCourseAt(day, period).course_name }}</div>
-                    <div class="course-loc-mini">{{ getCourseAt(day, period).location }}</div>
+                    <div class="course-loc-mini">
+                      {{ getCourseAt(day, period).building }} {{ getCourseAt(day, period).room }}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -37,6 +37,45 @@ async def get_available_courses(
                     # 调用存储过程
                     courses = sp.sp_get_available_courses(cursor, student_id)
                     
+                    # 获取附加信息（教师和时间段）
+                    teachers_map = {}
+                    slots_map = {}
+                    
+                    if courses:
+                        instance_ids = [str(c['开课实例ID']) for c in courses]
+                        ids_str = ",".join(instance_ids)
+                        
+                        # 获取教师信息
+                        cursor.execute(f"""
+                            SELECT t.`开课实例ID`, u.`姓名`
+                            FROM `授课关系表` t
+                            JOIN `用户信息表` u ON t.`教师ID` = u.`用户ID`
+                            WHERE t.`开课实例ID` IN ({ids_str})
+                        """)
+                        for row in cursor.fetchall():
+                            iid = row['开课实例ID']
+                            if iid not in teachers_map:
+                                teachers_map[iid] = []
+                            teachers_map[iid].append({"name": row['姓名']})
+                            
+                        # 获取时间段信息
+                        cursor.execute(f"""
+                            SELECT t.`开课实例ID`, ts.`星期`, ts.`开始时间`, ts.`结束时间`
+                            FROM `上课时间表` t
+                            JOIN `时间段信息表` ts ON t.`时间段ID` = ts.`时间段ID`
+                            WHERE t.`开课实例ID` IN ({ids_str})
+                        """)
+                        for row in cursor.fetchall():
+                            iid = row['开课实例ID']
+                            if iid not in slots_map:
+                                slots_map[iid] = []
+                            
+                            slots_map[iid].append({
+                                "day_of_week": row['星期'],
+                                "start_time": str(row['开始时间']),
+                                "end_time": str(row['结束时间'])
+                            })
+
                     # 转换为响应模型
                     course_list = [
                         AvailableCourse(
@@ -50,7 +89,9 @@ async def get_available_courses(
                             remaining_quota=c['剩余名额'],
                             # 兼容旧版存储过程，如果缺少总名额字段则默认为0
                             total_quota=c.get('总名额', 0),
-                            enroll_type=c['选课类型']
+                            enroll_type=c['选课类型'],
+                            teachers=teachers_map.get(c['开课实例ID'], []),
+                            time_slots=slots_map.get(c['开课实例ID'], [])
                         )
                         for c in courses
                     ]

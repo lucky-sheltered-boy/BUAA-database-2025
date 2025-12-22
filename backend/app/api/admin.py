@@ -473,8 +473,26 @@ async def create_instance(request: CreateInstanceRequest):
             
             # 步骤3: 添加上课时间
             for time_slot in request.time_slots:
-                # 计算时间段ID: (星期-1) * 5 + 时间段
-                timeslot_id = (time_slot.weekday - 1) * 5 + time_slot.time_slot
+                # 查找对应星期和节次的时间段ID
+                # 注意：这里假设时间段是按开始时间排序的，第N节就是第N个记录
+                cursor.execute("""
+                    SELECT `时间段ID` 
+                    FROM `时间段信息表` 
+                    WHERE `星期` = %s 
+                    ORDER BY `开始时间`
+                """, (time_slot.weekday,))
+                
+                available_slots = cursor.fetchall()
+                
+                # 检查节次是否存在
+                # time_slot.time_slot 是 1-based index
+                if time_slot.time_slot < 1 or time_slot.time_slot > len(available_slots):
+                    # 星期几的中文映射
+                    week_map = {1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '日'}
+                    week_str = week_map.get(time_slot.weekday, str(time_slot.weekday))
+                    raise BusinessError(f"星期{week_str}没有配置第{time_slot.time_slot}节课的时间段")
+                
+                timeslot_id = available_slots[time_slot.time_slot - 1]['时间段ID']
                 
                 schedule_id, schedule_message = sp.sp_add_schedule_time(
                     cursor,
@@ -485,6 +503,10 @@ async def create_instance(request: CreateInstanceRequest):
                     time_slot.end_week,
                     time_slot.week_type
                 )
+                
+                if schedule_id == -1:
+                    raise BusinessError(f"添加上课时间失败: {schedule_message}")
+                    
                 logger.info(f"添加上课时间: schedule_id={schedule_id}, {schedule_message}")
             
             return ResponseModel(

@@ -391,7 +391,8 @@ BEGIN
     
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        SET p_message = '❌ 添加上课时间失败: 数据库错误';
+        GET DIAGNOSTICS CONDITION 1 @p_msg = MESSAGE_TEXT;
+        SET p_message = CONCAT('❌ 添加上课时间失败: ', @p_msg);
         SET p_上课时间ID = -1;
         ROLLBACK;
     END;
