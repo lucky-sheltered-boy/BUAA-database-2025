@@ -222,9 +222,11 @@ onMounted(() => {
 }
 
 .welcome-card {
-  background: linear-gradient(135deg, #f0f9eb 0%, #ffffff 100%);
-  border: none;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95) 40%, rgba(240, 249, 235, 0.6) 100%), url('../../assets/images/VCG211381699782.webp') center/cover no-repeat;
+  border: 1px solid #f0f9eb;
   margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
 }
 
 .welcome-content {
